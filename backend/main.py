@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from database import test_connection
 
 app = FastAPI(title="Vox Platform API")
 
@@ -17,4 +18,8 @@ async def root():
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    db_connected = test_connection()
+    return {
+        "status": "ok",
+        "database": "connected" if db_connected else "disconnected"
+    }
