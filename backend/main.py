@@ -1,17 +1,17 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text, func
 from database import test_connection, engine, get_db
 from models import AuthorProfile, Playlist, Episode
 from storage import upload_to_s3, test_s3_connection
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
 from schemas import (
     AuthorProfileCreate, AuthorProfileRead,
     PlaylistCreate, PlaylistRead
 )
 from typing import List
 import uuid
+import time
 
 app = FastAPI(title="Vox Platform API")
 
@@ -29,22 +29,35 @@ async def root():
 
 @app.get("/health")
 async def health():
-    db_connected = test_connection()
-    s3_connected = test_s3_connection()
-    
-    # Check if tables exist
+    # Quick health check - don't wait for slow connections
+    db_connected = False
+    s3_connected = False
     tables_exist = False
-    if db_connected:
-        try:
-            with engine.connect() as conn:
-                result = conn.execute(text("""
-                    SELECT COUNT(*) FROM information_schema.tables 
-                    WHERE table_name IN ('author_profiles', 'playlists', 'episodes', 'comments', 'episode_stats')
-                """))
-                count = result.scalar()
-                tables_exist = count == 5
-        except:
-            tables_exist = False
+    
+    try:
+        # Try database with timeout
+        db_connected = test_connection()
+        
+        # Only check tables if DB connected
+        if db_connected:
+            try:
+                with engine.connect() as conn:
+                    result = conn.execute(text("""
+                        SELECT COUNT(*) FROM information_schema.tables 
+                        WHERE table_name IN ('author_profiles', 'playlists', 'episodes', 'comments', 'episode_stats')
+                    """))
+                    count = result.scalar()
+                    tables_exist = count == 5
+            except:
+                tables_exist = False
+    except:
+        pass
+    
+    try:
+        # Try S3
+        s3_connected = test_s3_connection()
+    except:
+        pass
     
     return {
         "status": "ok",
@@ -131,7 +144,7 @@ async def get_playlist(playlist_id: uuid.UUID, db: Session = Depends(get_db)):
     p.episode_count = count
     return p
 
-# File Upload Endpoint
+# File Upload Endpoints
 @app.post("/api/upload/test")
 async def test_upload(file: UploadFile = File(...)):
     """Test file upload to S3"""
@@ -148,4 +161,24 @@ async def test_upload(file: UploadFile = File(...)):
         "url": url,
         "s3_key": s3_key
     }
+
+@app.post("/api/upload/simple")
+async def simple_upload(file: UploadFile = File(...)):
+    """Simple file upload to S3 - no database needed"""
+    if not file:
+        raise HTTPException(status_code=400, detail="No file provided")
     
+    # Generate S3 key with timestamp
+    timestamp = int(time.time())
+    s3_key = f"vox-platform/test/{timestamp}_{file.filename}"
+    
+    try:
+        url = await upload_to_s3(file, s3_key)
+        return {
+            "success": True,
+            "filename": file.filename,
+            "url": url,
+            "s3_key": s3_key
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
