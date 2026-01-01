@@ -17,3 +17,23 @@ class AuthorProfileRead(BaseModel):
     
     class Config:
         from_attributes = True
+
+# Add these new playlist schemas:
+class PlaylistCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    author_id: uuid_pkg.UUID
+    is_published: bool = False
+
+class PlaylistRead(BaseModel):
+    id: uuid_pkg.UUID
+    author_id: uuid_pkg.UUID
+    title: str
+    description: Optional[str] = None
+    cover_image_url: Optional[str] = None
+    is_published: bool
+    created_at: datetime
+    episode_count: int = 0
+    
+    class Config:
+        from_attributes = True
