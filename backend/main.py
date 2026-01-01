@@ -1,10 +1,13 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy import text, func
 from database import test_connection, engine, get_db
-from models import AuthorProfile
-from schemas import AuthorProfileCreate, AuthorProfileRead
+from models import AuthorProfile, Playlist, Episode
+from schemas import (
+    AuthorProfileCreate, AuthorProfileRead,
+    PlaylistCreate, PlaylistRead
+)
 from typing import List
 import uuid
 
@@ -69,3 +72,57 @@ async def get_author(author_id: uuid.UUID, db: Session = Depends(get_db)):
     if not author:
         raise HTTPException(status_code=404, detail="Author not found")
     return author
+
+# Playlist Endpoints
+@app.post("/api/playlists", response_model=PlaylistRead)
+async def create_playlist(playlist: PlaylistCreate, db: Session = Depends(get_db)):
+    """Create a new playlist"""
+    # Verify author exists
+    author = db.query(AuthorProfile).filter(AuthorProfile.user_id == playlist.author_id).first()
+    if not author:
+        raise HTTPException(status_code=404, detail="Author not found")
+    
+    db_playlist = Playlist(**playlist.model_dump())
+    db.add(db_playlist)
+    db.commit()
+    db.refresh(db_playlist)
+    
+    # Return with episode count
+    result = PlaylistRead.model_validate(db_playlist)
+    result.episode_count = 0
+    return result
+
+@app.get("/api/playlists", response_model=List[PlaylistRead])
+async def list_playlists(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
+    """Get list of published playlists"""
+    playlists = db.query(
+        Playlist,
+        func.count(Episode.id).label("episode_count")
+    ).outerjoin(Episode).filter(
+        Playlist.is_published == True
+    ).group_by(Playlist.id).offset(skip).limit(limit).all()
+    
+    results = []
+    for playlist, count in playlists:
+        p = PlaylistRead.model_validate(playlist)
+        p.episode_count = count
+        results.append(p)
+    return results
+
+@app.get("/api/playlists/{playlist_id}", response_model=PlaylistRead)
+async def get_playlist(playlist_id: uuid.UUID, db: Session = Depends(get_db)):
+    """Get specific playlist"""
+    result = db.query(
+        Playlist,
+        func.count(Episode.id).label("episode_count")
+    ).outerjoin(Episode).filter(
+        Playlist.id == playlist_id
+    ).group_by(Playlist.id).first()
+    
+    if not result:
+        raise HTTPException(status_code=404, detail="Playlist not found")
+    
+    playlist, count = result
+    p = PlaylistRead.model_validate(playlist)
+    p.episode_count = count
+    return p
