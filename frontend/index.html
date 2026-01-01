@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vox Platform</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        p {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        
+        .status {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding: 8px 0;
+        }
+        
+        .status-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .status-label {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .badge {
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        
+        .badge.success {
+            background: #10b981;
+            color: white;
+        }
+        
+        .badge.error {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .badge.warning {
+            background: #f59e0b;
+            color: white;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none;
+            display: block;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #f1f3f5;
+            color: #495057;
+        }
+        
+        .btn-secondary:hover {
+            background: #e9ecef;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .loading {
+            text-align: center;
+            color: #666;
+            padding: 20px;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f4f6;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 0.875rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        @media (max-width: 500px) {
+            .container {
+                padding: 30px 20px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎙️ Vox Platform</h1>
+        <p>Audio storytelling for creators</p>
+        
+        <div id="status" class="status">
+            <div class="loading">
+                <div class="spinner"></div>
+                <div>Checking API status...</div>
+            </div>
+        </div>
+        
+        <div id="stats" class="stats" style="display: none;">
+            <div class="stat-card">
+                <div class="stat-value" id="authorCount">0</div>
+                <div class="stat-label">Authors</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="playlistCount">0</div>
+                <div class="stat-label">Playlists</div>
+            </div>
+        </div>
+        
+        <a href="https://vox-platform-api.onrender.com/docs" class="btn" target="_blank">
+            📚 View API Documentation
+        </a>
+        
+        <button class="btn btn-secondary" onclick="location.reload()">
+            🔄 Refresh Status
+        </button>
+    </div>
+    
+    <script>
+        const API_URL = 'https://vox-platform-api.onrender.com';
+        
+        async function checkStatus() {
+            try {
+                // Check health
+                const healthResponse = await fetch(`${API_URL}/health`);
+                const health = await healthResponse.json();
+                
+                // Get counts
+                const authorsResponse = await fetch(`${API_URL}/api/authors`);
+                const authors = await authorsResponse.json();
+                
+                const playlistsResponse = await fetch(`${API_URL}/api/playlists`);
+                const playlists = await playlistsResponse.json();
+                
+                // Update status display
+                document.getElementById('status').innerHTML = `
+                    <div class="status-item">
+                        <span class="status-label">API Status</span>
+                        <span class="badge ${health.status === 'ok' ? 'success' : 'error'}">
+                            ${health.status}
+                        </span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Database</span>
+                        <span class="badge ${health.database === 'connected' ? 'success' : 'error'}">
+                            ${health.database}
+                        </span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Storage</span>
+                        <span class="badge ${health.storage === 'connected' ? 'success' : 'warning'}">
+                            ${health.storage}
+                        </span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Tables</span>
+                        <span class="badge ${health.tables === 'ready' ? 'success' : 'error'}">
+                            ${health.tables}
+                        </span>
+                    </div>
+                `;
+                
+                // Update stats
+                document.getElementById('authorCount').textContent = authors.length;
+                document.getElementById('playlistCount').textContent = playlists.length;
+                document.getElementById('stats').style.display = 'grid';
+                
+            } catch (error) {
+                console.error('Error checking status:', error);
+                document.getElementById('status').innerHTML = `
+                    <div class="status-item">
+                        <span class="status-label">API Status</span>
+                        <span class="badge error">offline</span>
+                    </div>
+                    <div style="margin-top: 15px; color: #ef4444; font-size: 0.875rem;">
+                        Unable to connect to API. Please try again.
+                    </div>
+                `;
+            }
+        }
+        
+        // Check status on load
+        checkStatus();
+    </script>
+</body>
+</html>
