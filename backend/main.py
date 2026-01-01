@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text, func
 from database import test_connection, engine, get_db
 from models import AuthorProfile, Playlist, Episode
+from storage import upload_to_s3, test_s3_connection
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
 from schemas import (
     AuthorProfileCreate, AuthorProfileRead,
     PlaylistCreate, PlaylistRead
@@ -28,6 +30,7 @@ async def root():
 @app.get("/health")
 async def health():
     db_connected = test_connection()
+    s3_connected = test_s3_connection()
     
     # Check if tables exist
     tables_exist = False
@@ -46,6 +49,7 @@ async def health():
     return {
         "status": "ok",
         "database": "connected" if db_connected else "disconnected",
+        "storage": "connected" if s3_connected else "disconnected",
         "tables": "ready" if tables_exist else "not initialized"
     }
 
@@ -126,3 +130,22 @@ async def get_playlist(playlist_id: uuid.UUID, db: Session = Depends(get_db)):
     p = PlaylistRead.model_validate(playlist)
     p.episode_count = count
     return p
+
+# File Upload Endpoint
+@app.post("/api/upload/test")
+async def test_upload(file: UploadFile = File(...)):
+    """Test file upload to S3"""
+    if not file:
+        raise HTTPException(status_code=400, detail="No file provided")
+    
+    # Generate test S3 key
+    s3_key = f"vox-platform/test/{file.filename}"
+    
+    url = await upload_to_s3(file, s3_key)
+    
+    return {
+        "filename": file.filename,
+        "url": url,
+        "s3_key": s3_key
+    }
+    
