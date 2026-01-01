@@ -18,21 +18,24 @@ async def upload_to_s3(file: UploadFile, s3_key: str) -> str:
     """Upload file to S3 and return public URL"""
     file_content = await file.read()
     
+    # Upload without ACL (bucket should have public access policy instead)
     s3_client.put_object(
         Bucket=AWS_BUCKET_NAME,
         Key=s3_key,
         Body=file_content,
-        ContentType=file.content_type or 'application/octet-stream',
-        ACL='public-read'
+        ContentType=file.content_type or 'application/octet-stream'
+        # Removed ACL='public-read' - not supported by this bucket
     )
     
+    # Return public URL
     url = f"https://{AWS_BUCKET_NAME}.s3.{AWS_REGION}.amazonaws.com/{s3_key}"
     return url
 
 def test_s3_connection() -> bool:
-    """Test S3 connection"""
+    """Test S3 connection by checking bucket access"""
     try:
-        s3_client.list_buckets()
+        # Try to check if bucket exists
+        s3_client.head_bucket(Bucket=AWS_BUCKET_NAME)
         return True
     except Exception as e:
         print(f"S3 connection failed: {e}")
