@@ -34,7 +34,6 @@ def upload_to_s3(file_bytes: bytes, s3_key: str, content_type: str = 'applicatio
             Key=s3_key,
             Body=file_bytes,
             ContentType=content_type,
-            ACL='public-read'  # Make file publicly accessible
         )
         
         # Return public URL
