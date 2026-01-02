@@ -32,6 +32,11 @@ class GenerationRequest(BaseModel):
     text: str
     voice_id: str
     voice_name: str
+    # Episode metadata (optional)
+    episode_title: Optional[str] = None
+    episode_description: Optional[str] = None
+    cover_image_url: Optional[str] = None
+    is_published: bool = False
 
 
 class JobResponse(BaseModel):
@@ -131,6 +136,10 @@ async def create_generation_job(
         input_text=request.text,
         voice_id=request.voice_id,
         voice_name=request.voice_name,
+        episode_title=request.episode_title,
+        episode_description=request.episode_description,
+        cover_image_url=request.cover_image_url,
+        is_published=request.is_published,
         status="queued"
     )
     
