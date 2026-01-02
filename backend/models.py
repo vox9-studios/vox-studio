@@ -62,6 +62,7 @@ class GenerationJob(Base):
     cover_mobile_url = Column(Text)      # 9:16 (1080x1920) for social media  
     cover_widescreen_url = Column(Text)  # 16:9 (1920x1080) for video
     is_published = Column(Boolean, default=False)
+    playlist_id = Column(UUID(as_uuid=True), ForeignKey("playlists.id"))
     
     # Input
     input_text = Column(Text, nullable=False)
