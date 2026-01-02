@@ -309,6 +309,58 @@
             font-size: 0.9rem;
         }
         
+        .voice-star {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            width: 28px;
+            height: 28px;
+            background: transparent;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            font-size: 1.3rem;
+            transition: all 0.2s;
+            z-index: 10;
+        }
+        
+        .voice-star:hover {
+            color: #ffb300;
+            transform: scale(1.2);
+        }
+        
+        .voice-star.starred {
+            color: #ffb300;
+        }
+        
+        .voice-filters {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .filter-btn {
+            padding: 8px 16px;
+            background: transparent;
+            border: 1px solid #3d3d3d;
+            border-radius: 18px;
+            color: #aaa;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .filter-btn:hover {
+            border-color: #3ea6ff;
+            color: #3ea6ff;
+        }
+        
+        .filter-btn.active {
+            background: rgba(62, 166, 255, 0.2);
+            border-color: #3ea6ff;
+            color: #3ea6ff;
+        }
+        
         .voice-name {
             font-weight: 600;
             margin-bottom: 6px;
@@ -610,6 +662,13 @@
                 <input type="text" id="voice-search-input" placeholder="Search by name or description..." onkeyup="filterVoices()">
             </div>
             
+            <div class="voice-filters">
+                <button class="filter-btn active" onclick="setFilter('all')">All Voices</button>
+                <button class="filter-btn" onclick="setFilter('starred')">⭐ Favorites</button>
+                <button class="filter-btn" onclick="setFilter('premade')">Premade</button>
+                <button class="filter-btn" onclick="setFilter('professional')">Professional</button>
+            </div>
+            
             <label>Available voices</label>
             <div id="voice-grid" class="voice-grid">
                 <div class="loading">
@@ -705,6 +764,48 @@
         let generationJob = null;
         let audioUrl = null;
         let vttUrl = null;
+        let starredVoices = new Set();
+        let currentFilter = 'all';
+        
+        // Load starred voices from localStorage
+        function loadStarredVoices() {
+            const stored = localStorage.getItem('vox_starred_voices');
+            if (stored) {
+                starredVoices = new Set(JSON.parse(stored));
+            }
+        }
+        
+        function saveStarredVoices() {
+            localStorage.setItem('vox_starred_voices', JSON.stringify([...starredVoices]));
+        }
+        
+        function toggleStar(voiceId, event) {
+            event.stopPropagation();
+            
+            if (starredVoices.has(voiceId)) {
+                starredVoices.delete(voiceId);
+            } else {
+                starredVoices.add(voiceId);
+            }
+            
+            saveStarredVoices();
+            filterVoices(); // Re-render to update star display
+        }
+        
+        function setFilter(filter) {
+            currentFilter = filter;
+            
+            // Update button states
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            filterVoices();
+        }
+        
+        // Load starred voices on page load
+        loadStarredVoices();
         
         // Load credits on page load
         loadCredits();
@@ -755,16 +856,30 @@
         function renderVoices(voiceList) {
             const grid = document.getElementById('voice-grid');
             
-            if (voiceList.length === 0) {
+            // Apply current filter
+            let filteredVoices = voiceList;
+            
+            if (currentFilter === 'starred') {
+                filteredVoices = voiceList.filter(v => starredVoices.has(v.voice_id));
+            } else if (currentFilter !== 'all') {
+                filteredVoices = voiceList.filter(v => v.category === currentFilter);
+            }
+            
+            if (filteredVoices.length === 0) {
                 grid.innerHTML = '<div class="loading"><p>No voices found</p></div>';
                 return;
             }
             
-            grid.innerHTML = voiceList.map(voice => `
+            grid.innerHTML = filteredVoices.map(voice => `
                 <div class="voice-card" onclick="selectVoice('${voice.voice_id}', '${voice.name.replace(/'/g, "\\'")}')"
                      data-voice-id="${voice.voice_id}"
                      data-voice-name="${voice.name.toLowerCase()}"
                      data-voice-description="${(voice.description || '').toLowerCase()}">
+                    <button class="voice-star ${starredVoices.has(voice.voice_id) ? 'starred' : ''}" 
+                            onclick="toggleStar('${voice.voice_id}', event)"
+                            title="${starredVoices.has(voice.voice_id) ? 'Remove from favorites' : 'Add to favorites'}">
+                        ${starredVoices.has(voice.voice_id) ? '★' : '☆'}
+                    </button>
                     <div class="voice-name">${voice.name}</div>
                     <div class="voice-description">${voice.description || 'Professional voice'}</div>
                     ${voice.preview_url ? `<button class="preview-btn" onclick="event.stopPropagation(); playPreview('${voice.preview_url}')">▶ Preview</button>` : ''}
@@ -966,14 +1081,18 @@
                     }
                 }
                 
-                // Update captions during playback
+                // Update captions during playback with lead-in
                 const audio = document.getElementById('audio-player');
                 const display = document.getElementById('caption-display');
+                const LEAD_IN_MS = 200; // Show caption 200ms early
                 
                 audio.addEventListener('timeupdate', () => {
                     const currentTime = audio.currentTime;
+                    const leadTime = currentTime + (LEAD_IN_MS / 1000);
+                    
+                    // Find caption that should be showing (with lead-in)
                     const currentCue = cues.find(cue => 
-                        currentTime >= cue.start && currentTime <= cue.end
+                        leadTime >= cue.start && currentTime <= cue.end
                     );
                     
                     if (currentCue) {
