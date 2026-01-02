@@ -990,21 +990,6 @@
         // Load starred voices on page load
         loadStarredVoices();
 
-        // Cover image preview
-        document.getElementById('coverImageUrl').addEventListener('input', function(e) {
-            const url = e.target.value;
-            const preview = document.getElementById('coverPreview');
-            const img = document.getElementById('coverPreviewImg');
-            
-            if (url && url.startsWith('http')) {
-                img.src = url;
-                img.onload = () => preview.style.display = 'block';
-                img.onerror = () => preview.style.display = 'none';
-            } else {
-                preview.style.display = 'none';
-            }
-        });
-        
         // Load credits on page load
         loadCredits();
         
