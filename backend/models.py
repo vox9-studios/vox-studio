@@ -47,3 +47,42 @@ class Episode(Base):
     episode_number = Column(Integer, nullable=False)
     published_at = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class GenerationJob(Base):
+    """Generation jobs for AI narration"""
+    __tablename__ = "generation_jobs"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    author_id = Column(UUID(as_uuid=True), ForeignKey("author_profiles.user_id"), nullable=False)
+    
+    # Input
+    input_text = Column(Text, nullable=False)
+    voice_id = Column(String(255), nullable=False)
+    voice_name = Column(String(255))
+    model_id = Column(String(255), default="eleven_monolingual_v1")
+    
+    # Voice settings
+    stability = Column(Float, default=0.5)
+    similarity_boost = Column(Float, default=0.75)
+    speaking_rate = Column(Float, default=1.0)
+    
+    # Caption settings
+    caption_lead_in = Column(Integer, default=50)
+    caption_lead_out = Column(Integer, default=120)
+    caption_gap = Column(Integer, default=150)
+    
+    # Status
+    status = Column(String(50), default="queued")
+    progress = Column(Integer, default=0)
+    
+    # Output URLs
+    audio_url = Column(Text)
+    vtt_url = Column(Text)
+    
+    # Error handling
+    error_message = Column(Text)
+    
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow)
+    started_at = Column(DateTime)
+    completed_at = Column(DateTime)
