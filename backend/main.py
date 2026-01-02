@@ -5,7 +5,7 @@ from sqlalchemy import text, func
 from database import test_connection, engine, get_db
 from models import AuthorProfile, Playlist, Episode
 from storage import upload_to_s3, test_s3_connection
-from app.routes import authors, playlists, episodes, comments, search, narration
+from routes.narration import router as narration_router
 from schemas import (
     AuthorProfileCreate, AuthorProfileRead,
     PlaylistCreate, PlaylistRead
