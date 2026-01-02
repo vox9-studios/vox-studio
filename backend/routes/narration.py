@@ -1,7 +1,7 @@
 """
 Narration API routes - Sentence-by-sentence generation with real timing
 """
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, File, UploadFile
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional, List
@@ -32,10 +32,12 @@ class GenerationRequest(BaseModel):
     text: str
     voice_id: str
     voice_name: str
-    # Episode metadata (optional)
+    # Episode metadata
     episode_title: Optional[str] = None
     episode_description: Optional[str] = None
-    cover_image_url: Optional[str] = None
+    cover_square_url: Optional[str] = None
+    cover_mobile_url: Optional[str] = None
+    cover_widescreen_url: Optional[str] = None
     is_published: bool = False
 
 
@@ -78,7 +80,42 @@ async def test_api_endpoint():
         "message": "API key is valid" if is_valid else "API key is invalid or not set"
     }
 
-
+@router.post("/upload-cover/{author_id}")
+async def upload_cover_image(
+    author_id: str,
+    file: UploadFile = File(...),
+    format_type: str = "square",
+    db: Session = Depends(get_db)
+):
+    """Upload cover image to S3 - supports square, mobile, widescreen"""
+    # Validate author
+    author = db.query(AuthorProfile).filter(AuthorProfile.user_id == author_id).first()
+    if not author:
+        raise HTTPException(status_code=404, detail="Author not found")
+    
+    # Validate file type
+    if file.content_type not in ["image/jpeg", "image/jpg", "image/png"]:
+        raise HTTPException(status_code=400, detail="Only JPG and PNG allowed")
+    
+    # Validate size (max 5MB)
+    content = await file.read()
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Image must be under 5MB")
+    
+    await file.seek(0)
+    
+    # Generate S3 key
+    import uuid
+    file_ext = "jpg" if file.content_type == "image/jpeg" else "png"
+    image_id = str(uuid.uuid4())
+    s3_key = f"vox-platform/covers/{author_id}/{format_type}/{image_id}.{file_ext}"
+    
+    # Upload to S3
+    from storage import upload_to_s3 as storage_upload
+    url = await storage_upload(file, s3_key)
+    
+    return {"success": True, "url": url, "format": format_type}
+    
 @router.get("/voices", response_model=List[VoiceInfo])
 async def get_voices():
     """Get list of available ElevenLabs voices"""
@@ -130,7 +167,6 @@ async def create_generation_job(
             detail=f"Insufficient credits. Need {char_count}, have {author.credits_limit - author.credits_used} remaining."
         )
     
-    # Create job
     job = GenerationJob(
         author_id=author_id,
         input_text=request.text,
@@ -138,7 +174,9 @@ async def create_generation_job(
         voice_name=request.voice_name,
         episode_title=request.episode_title,
         episode_description=request.episode_description,
-        cover_image_url=request.cover_image_url,
+        cover_square_url=request.cover_square_url,
+        cover_mobile_url=request.cover_mobile_url,
+        cover_widescreen_url=request.cover_widescreen_url,
         is_published=request.is_published,
         status="queued"
     )
