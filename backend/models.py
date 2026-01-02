@@ -16,7 +16,7 @@ class AuthorProfile(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Add these credit tracking columns:
+    # Credit tracking columns
     credits_used = Column(Integer, default=0)
     credits_limit = Column(Integer, default=50000)
     last_credit_reset = Column(Date, default=date.today)
@@ -54,6 +54,12 @@ class GenerationJob(Base):
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     author_id = Column(UUID(as_uuid=True), ForeignKey("author_profiles.user_id"), nullable=False)
+    
+    # Episode metadata (NEW!)
+    episode_title = Column(String(500))
+    episode_description = Column(Text)
+    cover_image_url = Column(Text)
+    is_published = Column(Boolean, default=False)
     
     # Input
     input_text = Column(Text, nullable=False)
