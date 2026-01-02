@@ -40,7 +40,9 @@ def _sentence_ends_with_abbreviation(text: str) -> bool:
     last_word = text.rstrip().split()
     if not last_word:
         return False
-    token = last_word[-1].rstrip("\"'"')]}")
+    # Use simple string concatenation to avoid quote escaping issues
+    chars_to_strip = '"' + "'" + ")" + "]" + "}"
+    token = last_word[-1].rstrip(chars_to_strip)
     return token.lower() in _NON_TERMINAL_ABBREVIATIONS
 
 
