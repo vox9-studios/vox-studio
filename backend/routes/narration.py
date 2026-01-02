@@ -86,7 +86,7 @@ async def get_voices():
 @router.get("/credits/{author_id}")
 async def get_credits(author_id: str, db: Session = Depends(get_db)):
     """Get author's credit usage"""
-    author = db.query(AuthorProfile).filter(AuthorProfile.id == author_id).first()
+    author = db.query(AuthorProfile).filter(AuthorProfile.user_id == author_id).first()
     
     if not author:
         raise HTTPException(status_code=404, detail="Author not found")
@@ -109,7 +109,7 @@ async def create_generation_job(
 ):
     """Create a new generation job"""
     # Validate author exists
-    author = db.query(AuthorProfile).filter(AuthorProfile.id == author_id).first()
+    author = db.query(AuthorProfile).filter(AuthorProfile.user_id == author_id).first()
     if not author:
         raise HTTPException(status_code=404, detail="Author not found")
     
@@ -182,7 +182,7 @@ async def process_generation_job(job_id: str, db: Session = Depends(get_db)):
     
     try:
         # Get author for credits
-        author = db.query(AuthorProfile).filter(AuthorProfile.id == job.author_id).first()
+        author = db.query(AuthorProfile).filter(AuthorProfile.user_id == job.author_id).first()
         if not author:
             raise HTTPException(status_code=404, detail="Author not found")
         
