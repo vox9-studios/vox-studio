@@ -1,7 +1,7 @@
-from sqlalchemy import Column, String, Text, Boolean, Integer, Float, DateTime, ForeignKey
+from sqlalchemy import Column, String, Text, Boolean, Integer, Float, DateTime, Date, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
-from datetime import datetime
+from datetime import datetime, date
 import uuid
 
 Base = declarative_base()
@@ -15,6 +15,12 @@ class AuthorProfile(Base):
     avatar_url = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Add these credit tracking columns:
+    credits_used = Column(Integer, default=0)
+    credits_limit = Column(Integer, default=50000)
+    last_credit_reset = Column(Date, default=date.today)
+
 
 class Playlist(Base):
     __tablename__ = "playlists"
