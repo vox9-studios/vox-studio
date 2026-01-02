@@ -221,7 +221,7 @@ async def process_generation_job(job_id: UUID, db: Session = Depends(get_db)):
     Process a queued generation job
     This is where the actual AI generation happens
     """
-    from elevenlabs import generate_audio_bytes, get_audio_duration_estimate
+    from elevenlabs_client import generate_audio_bytes, get_audio_duration_estimate
     from captions import create_simple_vtt
     from storage import upload_to_s3
     import tempfile
