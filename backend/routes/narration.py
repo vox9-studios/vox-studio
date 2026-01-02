@@ -39,7 +39,7 @@ class GenerationRequest(BaseModel):
     cover_mobile_url: Optional[str] = None
     cover_widescreen_url: Optional[str] = None
     is_published: bool = False
-
+    playlist_id: Optional[str] = None  # NEW
 
 class JobResponse(BaseModel):
     id: str
@@ -178,6 +178,7 @@ async def create_generation_job(
         cover_mobile_url=request.cover_mobile_url,
         cover_widescreen_url=request.cover_widescreen_url,
         is_published=request.is_published,
+        playlist_id=request.playlist_id,  # NEW
         status="queued"
     )
     
