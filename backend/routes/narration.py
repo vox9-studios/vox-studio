@@ -1,23 +1,24 @@
 """
-Narration generation routes
+Narration API routes - Sentence-by-sentence generation with real timing
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional, List
-from uuid import UUID
-import uuid as uuid_pkg
-from datetime import datetime, date
+from datetime import date, datetime
+import tempfile
+import io
+from pathlib import Path
 
 from database import get_db
-from models import AuthorProfile
-from elevenlabs_client import get_available_voices, test_api_key
-from sqlalchemy import text
+from models import AuthorProfile, GenerationJob
+from s3_client import upload_to_s3
+from elevenlabs_client import generate_audio_bytes, get_available_voices, test_api_key
+from captions import split_into_sentences, create_vtt_from_real_durations, SentencePiece
 
-router = APIRouter()
+router = APIRouter(prefix="/api/narration", tags=["narration"])
 
 
-# Pydantic models for API
 class VoiceInfo(BaseModel):
     voice_id: str
     name: str
@@ -26,53 +27,45 @@ class VoiceInfo(BaseModel):
     category: str = "generated"
 
 
-class GenerateRequest(BaseModel):
+class GenerationRequest(BaseModel):
     text: str
     voice_id: str
-    voice_name: Optional[str] = None
-    stability: float = 0.5
-    similarity_boost: float = 0.75
-    style: float = 0.0
-    use_speaker_boost: bool = True
-    speaking_rate: float = 1.0
-    caption_lead_in: int = 50
-    caption_lead_out: int = 100
-    caption_gap: int = 100
+    voice_name: str
 
 
-class GenerationJobResponse(BaseModel):
-    id: UUID
-    author_id: UUID
-    character_count: int
+class JobResponse(BaseModel):
+    id: str
     status: str
-    progress: int
+    created_at: str
+
+
+class ProcessResult(BaseModel):
+    status: str
     audio_url: Optional[str] = None
     vtt_url: Optional[str] = None
-    error_message: Optional[str] = None
-    created_at: datetime
+    duration_seconds: Optional[float] = None
+    sentence_count: Optional[int] = None
+
+
+def reset_credits_if_needed(author: AuthorProfile, db: Session):
+    """Reset credits if we're in a new month"""
+    today = date.today()
+    if author.last_credit_reset is None:
+        author.last_credit_reset = today
+        author.credits_used = 0
+        db.commit()
+        return
     
-    class Config:
-        from_attributes = True
-
-
-class CreditStatus(BaseModel):
-    credits_used: int
-    credits_limit: int
-    credits_remaining: int
-    last_reset: date
-
-
-# Routes
-@router.get("/voices", response_model=List[VoiceInfo])
-async def list_voices():
-    """Get list of available ElevenLabs voices"""
-    voices = get_available_voices()
-    return voices
+    if (today.year > author.last_credit_reset.year or 
+        (today.year == author.last_credit_reset.year and today.month > author.last_credit_reset.month)):
+        author.credits_used = 0
+        author.last_credit_reset = today
+        db.commit()
 
 
 @router.get("/test-api")
-async def test_elevenlabs_api():
-    """Test if ElevenLabs API key is working"""
+async def test_api_endpoint():
+    """Test if ElevenLabs API key is valid"""
     is_valid = test_api_key()
     return {
         "api_key_valid": is_valid,
@@ -80,289 +73,223 @@ async def test_elevenlabs_api():
     }
 
 
-@router.get("/credits/{author_id}", response_model=CreditStatus)
-async def get_credits(author_id: UUID, db: Session = Depends(get_db)):
-    """Get credit status for an author"""
-    author = db.query(AuthorProfile).filter(AuthorProfile.user_id == author_id).first()
+@router.get("/voices", response_model=List[VoiceInfo])
+async def get_voices():
+    """Get list of available ElevenLabs voices"""
+    try:
+        voices = get_available_voices()
+        return voices
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch voices: {str(e)}")
+
+
+@router.get("/credits/{author_id}")
+async def get_credits(author_id: str, db: Session = Depends(get_db)):
+    """Get author's credit usage"""
+    author = db.query(AuthorProfile).filter(AuthorProfile.id == author_id).first()
     
     if not author:
         raise HTTPException(status_code=404, detail="Author not found")
     
-    # Check if credits need to be reset (monthly)
-    today = date.today()
-    if author.last_credit_reset.month != today.month or author.last_credit_reset.year != today.year:
-        # Reset credits for new month
-        author.credits_used = 0
-        author.last_credit_reset = today
-        db.commit()
-        db.refresh(author)
+    reset_credits_if_needed(author, db)
     
-    credits_remaining = author.credits_limit - author.credits_used
-    
-    return CreditStatus(
-        credits_used=author.credits_used,
-        credits_limit=author.credits_limit,
-        credits_remaining=credits_remaining,
-        last_reset=author.last_credit_reset
-    )
+    return {
+        "credits_used": author.credits_used,
+        "credits_limit": author.credits_limit,
+        "credits_remaining": author.credits_limit - author.credits_used,
+        "last_reset": author.last_credit_reset.isoformat() if author.last_credit_reset else None
+    }
 
 
-@router.post("/generate/{author_id}", response_model=GenerationJobResponse)
+@router.post("/generate/{author_id}", response_model=JobResponse)
 async def create_generation_job(
-    author_id: UUID,
-    request: GenerateRequest,
+    author_id: str,
+    request: GenerationRequest,
     db: Session = Depends(get_db)
 ):
-    """
-    Create a new generation job (queued for processing)
-    This endpoint creates the job but doesn't process it yet
-    """
-    # Verify author exists
-    author = db.query(AuthorProfile).filter(AuthorProfile.user_id == author_id).first()
+    """Create a new generation job"""
+    # Validate author exists
+    author = db.query(AuthorProfile).filter(AuthorProfile.id == author_id).first()
     if not author:
         raise HTTPException(status_code=404, detail="Author not found")
     
-    # Check credits
-    character_count = len(request.text)
-    
     # Reset credits if needed
-    today = date.today()
-    if author.last_credit_reset.month != today.month or author.last_credit_reset.year != today.year:
-        author.credits_used = 0
-        author.last_credit_reset = today
-        db.commit()
+    reset_credits_if_needed(author, db)
     
-    credits_remaining = author.credits_limit - author.credits_used
-    
-    if character_count > credits_remaining:
+    # Check credits
+    char_count = len(request.text)
+    if author.credits_used + char_count > author.credits_limit:
         raise HTTPException(
-            status_code=403,
-            detail=f"Insufficient credits. Need {character_count}, have {credits_remaining}"
+            status_code=402,
+            detail=f"Insufficient credits. Need {char_count}, have {author.credits_limit - author.credits_used} remaining."
         )
     
-    # Create generation job
-    job_id = uuid_pkg.uuid4()
+    # Create job
+    job = GenerationJob(
+        author_id=author_id,
+        input_text=request.text,
+        voice_id=request.voice_id,
+        voice_name=request.voice_name,
+        status="queued"
+    )
     
-    insert_query = text("""
-        INSERT INTO generation_jobs (
-            id, author_id, input_text, character_count, voice_id, voice_name,
-            stability, similarity_boost, style, use_speaker_boost, speaking_rate,
-            caption_lead_in, caption_lead_out, caption_gap,
-            status, progress
-        ) VALUES (
-            :id, :author_id, :input_text, :character_count, :voice_id, :voice_name,
-            :stability, :similarity_boost, :style, :use_speaker_boost, :speaking_rate,
-            :caption_lead_in, :caption_lead_out, :caption_gap,
-            'queued', 0
-        )
-    """)
+    db.add(job)
+    db.commit()
+    db.refresh(job)
     
-    db.execute(insert_query, {
-        "id": str(job_id),
-        "author_id": str(author_id),
-        "input_text": request.text,
-        "character_count": character_count,
-        "voice_id": request.voice_id,
-        "voice_name": request.voice_name,
-        "stability": request.stability,
-        "similarity_boost": request.similarity_boost,
-        "style": request.style,
-        "use_speaker_boost": request.use_speaker_boost,
-        "speaking_rate": request.speaking_rate,
-        "caption_lead_in": request.caption_lead_in,
-        "caption_lead_out": request.caption_lead_out,
-        "caption_gap": request.caption_gap
-    })
+    return JobResponse(
+        id=str(job.id),
+        status=job.status,
+        created_at=job.created_at.isoformat()
+    )
+
+
+@router.get("/job/{job_id}")
+async def get_job_status(job_id: str, db: Session = Depends(get_db)):
+    """Get status of a generation job"""
+    job = db.query(GenerationJob).filter(GenerationJob.id == job_id).first()
     
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    return {
+        "id": str(job.id),
+        "status": job.status,
+        "audio_url": job.audio_url,
+        "vtt_url": job.vtt_url,
+        "created_at": job.created_at.isoformat(),
+        "completed_at": job.completed_at.isoformat() if job.completed_at else None
+    }
+
+
+@router.post("/process/{job_id}", response_model=ProcessResult)
+async def process_generation_job(job_id: str, db: Session = Depends(get_db)):
+    """
+    Process a generation job - sentence by sentence with real timing!
+    This is the correct approach from Vox9.
+    """
+    # Get job
+    job = db.query(GenerationJob).filter(GenerationJob.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    if job.status != "queued":
+        raise HTTPException(status_code=400, detail=f"Job is {job.status}, cannot process")
+    
+    # Update status
+    job.status = "processing"
     db.commit()
     
-    # Get the created job
-    select_query = text("SELECT * FROM generation_jobs WHERE id = :id")
-    result = db.execute(select_query, {"id": str(job_id)}).fetchone()
-    
-    return GenerationJobResponse(
-        id=result.id,
-        author_id=result.author_id,
-        character_count=result.character_count,
-        status=result.status,
-        progress=result.progress,
-        audio_url=result.audio_url,
-        vtt_url=result.vtt_url,
-        error_message=result.error_message,
-        created_at=result.created_at
-    )
-
-
-@router.get("/job/{job_id}", response_model=GenerationJobResponse)
-async def get_job_status(job_id: UUID, db: Session = Depends(get_db)):
-    """Get status of a generation job"""
-    query = text("SELECT * FROM generation_jobs WHERE id = :id")
-    result = db.execute(query, {"id": str(job_id)}).fetchone()
-    
-    if not result:
-        raise HTTPException(status_code=404, detail="Job not found")
-    
-    return GenerationJobResponse(
-        id=result.id,
-        author_id=result.author_id,
-        character_count=result.character_count,
-        status=result.status,
-        progress=result.progress,
-        audio_url=result.audio_url,
-        vtt_url=result.vtt_url,
-        error_message=result.error_message,
-        created_at=result.created_at
-    )
-
-
-@router.post("/process/{job_id}")
-async def process_generation_job(job_id: UUID, db: Session = Depends(get_db)):
-    """
-    Process a queued generation job
-    This is where the actual AI generation happens
-    """
-    from elevenlabs_client import generate_audio_bytes, get_audio_duration_estimate
-    from captions import create_simple_vtt
-    from storage import upload_to_s3
-    import tempfile
-    import os
-    
-    # Get job
-    query = text("SELECT * FROM generation_jobs WHERE id = :id")
-    result = db.execute(query, {"id": str(job_id)}).fetchone()
-    
-    if not result:
-        raise HTTPException(status_code=404, detail="Job not found")
-    
-    if result.status != "queued":
-        raise HTTPException(status_code=400, detail=f"Job is {result.status}, cannot process")
-    
     try:
-        # Update status to processing
-        update_query = text("""
-            UPDATE generation_jobs 
-            SET status = 'processing', started_at = NOW(), progress = 10
-            WHERE id = :id
-        """)
-        db.execute(update_query, {"id": str(job_id)})
-        db.commit()
+        # Get author for credits
+        author = db.query(AuthorProfile).filter(AuthorProfile.id == job.author_id).first()
+        if not author:
+            raise HTTPException(status_code=404, detail="Author not found")
         
-        # Generate audio
-        audio_bytes = generate_audio_bytes(
-            text=result.input_text,
-            voice_id=result.voice_id,
-            stability=result.stability,
-            similarity_boost=result.similarity_boost,
-            style=result.style,
-            use_speaker_boost=result.use_speaker_boost,
-            speaking_rate=result.speaking_rate
+        # Step 1: Split text into sentences
+        sentences = split_into_sentences(job.input_text)
+        
+        if not sentences:
+            raise HTTPException(status_code=400, detail="No sentences found in text")
+        
+        print(f"Processing {len(sentences)} sentences...")
+        
+        # Step 2: Generate audio for EACH sentence individually
+        audio_chunks = []  # Store MP3 bytes for each sentence
+        durations = []     # Store REAL duration for each sentence
+        
+        for i, sentence in enumerate(sentences, 1):
+            print(f"Generating sentence {i}/{len(sentences)}: {sentence.text[:50]}...")
+            
+            # Generate audio for THIS sentence
+            audio_bytes = generate_audio_bytes(
+                text=sentence.text,
+                voice_id=job.voice_id,
+                model_id=job.model_id or "eleven_monolingual_v1",
+                stability=job.stability,
+                similarity_boost=job.similarity_boost,
+                speaking_rate=job.speaking_rate
+            )
+            
+            if not audio_bytes:
+                raise Exception(f"Failed to generate audio for sentence {i}")
+            
+            # Measure REAL duration using mutagen (lightweight MP3 parser)
+            try:
+                from mutagen.mp3 import MP3
+                from io import BytesIO
+                
+                audio_file = MP3(BytesIO(audio_bytes))
+                real_duration = audio_file.info.length  # Actual duration in seconds!
+                
+                print(f"  → Sentence {i} duration: {real_duration:.2f}s")
+                
+            except Exception as e:
+                # Fallback: estimate based on byte size (very rough)
+                # MP3 is typically 128kbps = 16KB/s
+                estimated_duration = len(audio_bytes) / 16000
+                real_duration = max(0.5, estimated_duration)  # At least 0.5s
+                print(f"  → Sentence {i} duration (estimated): {real_duration:.2f}s")
+            
+            audio_chunks.append(audio_bytes)
+            durations.append(real_duration)
+        
+        # Step 3: Combine audio chunks with gaps
+        print("Combining audio chunks...")
+        
+        # For now, just concatenate MP3s directly
+        # TODO: Add silence between sentences/paragraphs using pydub
+        combined_audio = b''.join(audio_chunks)
+        
+        total_duration = sum(durations)
+        print(f"Total audio duration: {total_duration:.2f}s")
+        
+        # Step 4: Create VTT with REAL durations (no guessing!)
+        print("Creating captions with real timing...")
+        
+        vtt_content = create_vtt_from_real_durations(
+            sentences=sentences,
+            durations=durations,
+            caption_lead_in_ms=job.caption_lead_in,
+            caption_lead_out_ms=job.caption_lead_out,
+            paragraph_gap_ms=600,
+            gap_ms=job.caption_gap
         )
         
-        if not audio_bytes:
-            raise Exception("Failed to generate audio")
+        # Step 5: Upload to S3
+        print("Uploading to S3...")
         
-        # Update progress
-        update_query = text("UPDATE generation_jobs SET progress = 50 WHERE id = :id")
-        db.execute(update_query, {"id": str(job_id)})
-        db.commit()
+        audio_key = f"vox-platform/generations/{job.author_id}/{job_id}/audio.mp3"
+        vtt_key = f"vox-platform/generations/{job.author_id}/{job_id}/captions.vtt"
         
-        # Save audio to temp file and upload to S3
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as temp_audio:
-            temp_audio.write(audio_bytes)
-            temp_audio_path = temp_audio.name
+        audio_url = upload_to_s3(combined_audio, audio_key, content_type="audio/mpeg")
+        vtt_url = upload_to_s3(vtt_content.encode('utf-8'), vtt_key, content_type="text/vtt")
         
-        # Upload audio to S3
-        from fastapi import UploadFile
-        import aiofiles
+        # Step 6: Update job
+        job.status = "completed"
+        job.audio_url = audio_url
+        job.vtt_url = vtt_url
+        job.completed_at = datetime.utcnow()
         
-        # Create S3 key
-        audio_s3_key = f"vox-platform/generations/{str(result.author_id)}/{str(job_id)}/audio.mp3"
-        
-        # Read file as UploadFile for S3 upload
-        with open(temp_audio_path, 'rb') as f:
-            from io import BytesIO
-            audio_file = BytesIO(f.read())
-            
-            class FakeUploadFile:
-                def __init__(self, file, filename, content_type):
-                    self.file = file
-                    self.filename = filename
-                    self.content_type = content_type
-                
-                async def read(self):
-                    return self.file.read()
-                
-                async def seek(self, position):
-                    return self.file.seek(position)
-            
-            fake_upload = FakeUploadFile(audio_file, "audio.mp3", "audio/mpeg")
-            audio_url = await upload_to_s3(fake_upload, audio_s3_key)
-        
-        # Clean up temp file
-        os.unlink(temp_audio_path)
-        
-        # Update progress
-        update_query = text("UPDATE generation_jobs SET progress = 75 WHERE id = :id")
-        db.execute(update_query, {"id": str(job_id)})
-        db.commit()
-        
-        # Generate VTT captions
-        duration = get_audio_duration_estimate(result.input_text, result.speaking_rate)
-        vtt_content = create_simple_vtt(result.input_text, duration)
-        
-        # Upload VTT to S3
-        vtt_s3_key = f"vox-platform/generations/{str(result.author_id)}/{str(job_id)}/captions.vtt"
-        
-        vtt_bytes = BytesIO(vtt_content.encode('utf-8'))
-        fake_vtt = FakeUploadFile(vtt_bytes, "captions.vtt", "text/vtt")
-        vtt_url = await upload_to_s3(fake_vtt, vtt_s3_key)
-        
-        # Update job with results
-        update_query = text("""
-            UPDATE generation_jobs 
-            SET status = 'completed', 
-                progress = 100,
-                audio_url = :audio_url,
-                vtt_url = :vtt_url,
-                completed_at = NOW()
-            WHERE id = :id
-        """)
-        db.execute(update_query, {
-            "id": str(job_id),
-            "audio_url": audio_url,
-            "vtt_url": vtt_url
-        })
-        
-        # Update author credits
-        update_credits = text("""
-            UPDATE author_profiles 
-            SET credits_used = credits_used + :chars
-            WHERE user_id = :author_id
-        """)
-        db.execute(update_credits, {
-            "chars": result.character_count,
-            "author_id": str(result.author_id)
-        })
+        # Step 7: Deduct credits
+        author.credits_used += len(job.input_text)
         
         db.commit()
         
-        return {
-            "status": "completed",
-            "audio_url": audio_url,
-            "vtt_url": vtt_url
-        }
+        print(f"✓ Job {job_id} completed successfully!")
+        
+        return ProcessResult(
+            status="completed",
+            audio_url=audio_url,
+            vtt_url=vtt_url,
+            duration_seconds=total_duration,
+            sentence_count=len(sentences)
+        )
         
     except Exception as e:
-        # Update job with error
-        update_query = text("""
-            UPDATE generation_jobs 
-            SET status = 'failed', error_message = :error
-            WHERE id = :id
-        """)
-        db.execute(update_query, {
-            "id": str(job_id),
-            "error": str(e)
-        })
+        job.status = "failed"
+        job.error_message = str(e)
         db.commit()
         
+        print(f"✗ Job {job_id} failed: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
