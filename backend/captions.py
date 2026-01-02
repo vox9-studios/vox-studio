@@ -2,6 +2,7 @@
 VTT caption generation from alignment data
 """
 from typing import List, Dict, Optional
+import re
 
 
 def format_timestamp(seconds: float) -> str:
@@ -87,25 +88,44 @@ def create_vtt_from_alignment(alignment_data: Dict) -> str:
 def create_simple_vtt(text: str, duration_seconds: float) -> str:
     """
     Create simple VTT captions when alignment data is not available
-    Splits text into chunks based on estimated timing
+    Splits text into sentences based on estimated timing
+    Preserves all punctuation and proper sentence structure
     """
     vtt_content = "WEBVTT\n\n"
     
-    # Split text into sentences
-    import re
-    sentences = re.split(r'[.!?]+', text)
-    sentences = [s.strip() for s in sentences if s.strip()]
+    # Split text into sentences (preserve all punctuation)
+    # Split on sentence-ending punctuation followed by space or end of string
+    sentences = re.split(r'([.!?]+(?:\s+|$))', text)
     
-    if not sentences:
+    # Reconstruct sentences with their punctuation
+    full_sentences = []
+    i = 0
+    while i < len(sentences):
+        if i + 1 < len(sentences) and sentences[i].strip():
+            # Combine sentence with its punctuation
+            sentence = sentences[i] + sentences[i + 1]
+            full_sentences.append(sentence.strip())
+            i += 2
+        elif sentences[i].strip():
+            full_sentences.append(sentences[i].strip())
+            i += 1
+        else:
+            i += 1
+    
+    if not full_sentences:
         return vtt_content
     
-    # Estimate time per sentence
-    time_per_sentence = duration_seconds / len(sentences)
+    # Estimate time per sentence based on character count
+    total_chars = sum(len(s) for s in full_sentences)
     
     current_time = 0.0
-    for i, sentence in enumerate(sentences):
+    for i, sentence in enumerate(full_sentences):
+        # Calculate duration based on character proportion
+        char_proportion = len(sentence) / max(1, total_chars)
+        sentence_duration = duration_seconds * char_proportion
+        
         start_time = current_time
-        end_time = current_time + time_per_sentence
+        end_time = current_time + sentence_duration
         
         vtt_content += f"{i + 1}\n"
         vtt_content += f"{format_timestamp(start_time)} --> {format_timestamp(end_time)}\n"
