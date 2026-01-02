@@ -6,6 +6,7 @@ from database import test_connection, engine, get_db
 from models import AuthorProfile, Playlist, Episode
 from storage import upload_to_s3, test_s3_connection
 from routes.narration import router as narration_router
+from routes import playlist as playlist_routes
 from schemas import (
     AuthorProfileCreate, AuthorProfileRead,
     PlaylistCreate, PlaylistRead
@@ -26,6 +27,7 @@ app.add_middleware(
 
 # Include narration router
 app.include_router(narration_router)
+app.include_router(playlist_routes.router)
 
 @app.get("/")
 async def root():
