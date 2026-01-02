@@ -706,6 +706,28 @@
                     />
                 </div>
         
+                <!-- Playlist Selection (NEW) -->
+                <div style="margin-bottom: 20px;">
+                    <label for="playlistSelect">Playlist (optional)</label>
+                    <div style="display: flex; gap: 8px;">
+                        <select 
+                            id="playlistSelect"
+                            style="flex: 1; padding: 12px; background: #0f0f0f; border: 1px solid #3d3d3d; border-radius: 8px; color: #f1f1f1; font-size: 1rem;">
+                            <option value="">Standalone Episode (No Playlist)</option>
+                        </select>
+                        <button 
+                            onclick="openPlaylistModal()" 
+                            class="btn-secondary"
+                            type="button"
+                            style="padding: 12px 20px; white-space: nowrap;">
+                            Manage Playlists
+                        </button>
+                    </div>
+                    <div style="font-size: 0.85rem; color: #666; margin-top: 8px;">
+                        Group episodes into series, seasons, or collections
+                    </div>
+                </div>
+                
                 <!-- Description -->
                 <div style="margin-bottom: 20px;">
                     <label for="episodeDescription">Description</label>
@@ -949,6 +971,8 @@
             mobile: null,
             widescreen: null
         };
+        // Playlist management (NEW)
+        let userPlaylists = [];
         
         // Load starred voices from localStorage
         function loadStarredVoices() {
@@ -1136,6 +1160,11 @@
             if (step === 2 && voices.length === 0) {
                 loadVoices();
             }
+
+            // Load playlists when entering step 3 (NEW)
+            if (step === 3) {
+                loadPlaylists();
+            }
             
             // Update summary in step 4
             if (step === 4) {
@@ -1234,7 +1263,167 @@
             document.getElementById(`${formatType}Preview`).style.display = 'none';
             document.getElementById(`${formatType}CoverInput`).value = '';
         }
-           
+        
+        // Playlist management functions (NEW)
+        async function loadPlaylists() {
+            try {
+                const response = await fetch(`${API_URL}/api/playlists/${AUTHOR_ID}`);
+                userPlaylists = await response.json();
+                
+                updatePlaylistSelect();
+                renderPlaylistsList();
+                
+            } catch (error) {
+                console.error('Error loading playlists:', error);
+            }
+        }
+        
+        function updatePlaylistSelect() {
+            const select = document.getElementById('playlistSelect');
+            if (!select) return;
+            
+            select.innerHTML = '<option value="">Standalone Episode (No Playlist)</option>';
+            
+            userPlaylists.forEach(playlist => {
+                const option = document.createElement('option');
+                option.value = playlist.id;
+                option.textContent = `${playlist.title} (${playlist.episode_count} episodes)`;
+                select.appendChild(option);
+            });
+        }
+        
+        function renderPlaylistsList() {
+            const container = document.getElementById('playlistsList');
+            
+            if (userPlaylists.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #666;">
+                        <p>No playlists yet. Create your first one above!</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = userPlaylists.map(playlist => {
+                const defaultColor = generateColorFromText(playlist.title);
+                const isDefault = playlist.cover_image_url && playlist.cover_image_url.startsWith('default://');
+                const coverStyle = isDefault 
+                    ? `background: linear-gradient(135deg, ${defaultColor} 0%, ${adjustColor(defaultColor, -20)} 100%);`
+                    : `background-image: url('${playlist.cover_image_url}'); background-size: cover; background-position: center;`;
+                
+                return `
+                    <div style="display: flex; gap: 16px; padding: 16px; background: #1a1a1a; border-radius: 8px; border: 1px solid #3d3d3d;">
+                        <div style="width: 80px; height: 80px; border-radius: 8px; flex-shrink: 0; ${coverStyle} display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 1.2rem;">
+                            ${isDefault ? playlist.title.charAt(0).toUpperCase() : ''}
+                        </div>
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="font-weight: 600; color: #fff; margin-bottom: 4px;">${playlist.title}</div>
+                            <div style="font-size: 0.85rem; color: #aaa; margin-bottom: 8px;">${playlist.episode_count} episodes</div>
+                            ${playlist.description ? `<div style="font-size: 0.85rem; color: #666; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${playlist.description}</div>` : ''}
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <button onclick="deletePlaylist('${playlist.id}')" style="padding: 6px 12px; background: transparent; border: 1px solid #f44336; color: #f44336; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function generateColorFromText(text) {
+            let hash = 0;
+            for (let i = 0; i < text.length; i++) {
+                hash = text.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            
+            const hue = hash % 360;
+            const saturation = 60 + (hash % 20);
+            const lightness = 45 + (hash % 15);
+            
+            return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+        }
+        
+        function adjustColor(hsl, percent) {
+            const match = hsl.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+            if (!match) return hsl;
+            
+            const h = match[1];
+            const s = match[2];
+            const l = Math.max(0, Math.min(100, parseInt(match[3]) + percent));
+            
+            return `hsl(${h}, ${s}%, ${l}%)`;
+        }
+        
+        async function openPlaylistModal() {
+            const modal = document.getElementById('playlistModal');
+            modal.style.display = 'flex';
+            await loadPlaylists();
+        }
+        
+        function closePlaylistModal() {
+            const modal = document.getElementById('playlistModal');
+            modal.style.display = 'none';
+            document.getElementById('newPlaylistTitle').value = '';
+            document.getElementById('newPlaylistDescription').value = '';
+        }
+        
+        async function createNewPlaylist() {
+            const title = document.getElementById('newPlaylistTitle').value.trim();
+            
+            if (!title) {
+                alert('Please enter a playlist title');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/api/playlists/${AUTHOR_ID}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: title,
+                        description: document.getElementById('newPlaylistDescription').value.trim() || null
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to create playlist');
+                }
+                
+                await loadPlaylists();
+                document.getElementById('newPlaylistTitle').value = '';
+                document.getElementById('newPlaylistDescription').value = '';
+                alert('Playlist created successfully!');
+                
+            } catch (error) {
+                console.error('Error creating playlist:', error);
+                alert('Failed to create playlist: ' + error.message);
+            }
+        }
+        
+        async function deletePlaylist(playlistId) {
+            if (!confirm('Are you sure you want to delete this playlist?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/api/playlists/${playlistId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Failed to delete playlist');
+                }
+                
+                await loadPlaylists();
+                alert('Playlist deleted successfully!');
+                
+            } catch (error) {
+                console.error('Error deleting playlist:', error);
+                alert('Failed to delete playlist: ' + error.message);
+            }
+        }           
         async function startGeneration() {
             document.getElementById('generation-ready').style.display = 'none';
             document.getElementById('generation-progress').style.display = 'block';
@@ -1257,6 +1446,7 @@
                         cover_mobile_url: coverUrls.mobile,
                         cover_widescreen_url: coverUrls.widescreen,
                         is_published: document.getElementById('isPublished').checked
+                        playlist_id: document.getElementById('playlistSelect').value || null
                     })
                 });
                 
@@ -1405,5 +1595,53 @@
             alert('Episode publishing coming soon! For now, your audio is ready at:\n\n' + audioUrl);
         }
     </script>
+        
+        <!-- Playlist Management Modal (NEW) -->
+        <div id="playlistModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center;">
+            <div style="background: #212121; border-radius: 12px; padding: 32px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; border: 1px solid #3d3d3d;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                    <h2 style="margin: 0; font-size: 1.5rem; color: #fff;">Manage Playlists</h2>
+                    <button onclick="closePlaylistModal()" style="background: transparent; border: none; color: #aaa; font-size: 1.5rem; cursor: pointer; padding: 0; width: 32px; height: 32px;">×</button>
+                </div>
+    
+                <!-- Create New Playlist Section -->
+                <div style="background: #0f0f0f; border-radius: 8px; padding: 20px; margin-bottom: 24px; border: 1px solid #3d3d3d;">
+                    <h3 style="margin: 0 0 16px 0; font-size: 1.1rem; color: #fff;">Create New Playlist</h3>
+                    
+                    <input 
+                        type="text" 
+                        id="newPlaylistTitle"
+                        placeholder="Playlist title (e.g., 'Season 1', 'My Sci-Fi Series')"
+                        style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #3d3d3d; border-radius: 8px; color: #f1f1f1; font-size: 1rem; margin-bottom: 12px;"
+                    />
+                    
+                    <textarea 
+                        id="newPlaylistDescription"
+                        placeholder="Description (optional)"
+                        rows="2"
+                        style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #3d3d3d; border-radius: 8px; color: #f1f1f1; font-size: 1rem; margin-bottom: 16px; resize: vertical;"
+                    ></textarea>
+                    
+                    <button 
+                        onclick="createNewPlaylist()" 
+                        class="btn-primary"
+                        style="width: 100%;">
+                        Create Playlist
+                    </button>
+                </div>
+    
+                <!-- Existing Playlists -->
+                <div>
+                    <h3 style="margin: 0 0 16px 0; font-size: 1.1rem; color: #fff;">Your Playlists</h3>
+                    <div id="playlistsList" style="display: flex; flex-direction: column; gap: 12px;">
+                        <div style="text-align: center; padding: 40px; color: #666;">
+                            <div class="spinner" style="margin: 0 auto 16px;"></div>
+                            <p>Loading playlists...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
 </body>
 </html>
