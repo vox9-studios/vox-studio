@@ -11,7 +11,7 @@ from datetime import datetime, date
 
 from database import get_db
 from models import AuthorProfile
-from elevenlabs import get_available_voices, test_api_key
+from elevenlabs_client import get_available_voices, test_api_key
 from sqlalchemy import text
 
 router = APIRouter()
