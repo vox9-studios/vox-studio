@@ -1,5 +1,6 @@
 """
-VTT caption generation - Improved version based on Vox9 TTS engine
+VTT caption generation with real audio duration support
+Based on Vox9 TTS engine approach
 """
 from typing import List, Dict, Optional, NamedTuple
 import re
@@ -112,9 +113,9 @@ def split_into_sentences(text: str) -> List[SentencePiece]:
     return sentences
 
 
-def create_simple_vtt(
-    text: str, 
-    duration_seconds: float,
+def create_vtt_from_real_durations(
+    sentences: List[SentencePiece],
+    durations: List[float],
     *,
     caption_lead_in_ms: int = 50,
     caption_lead_out_ms: int = 120,
@@ -122,29 +123,27 @@ def create_simple_vtt(
     gap_ms: int = 150
 ) -> str:
     """
-    Create VTT captions with sentence-by-sentence timing.
-    Each sentence gets proper lead-in so captions appear BEFORE audio speaks.
+    Create VTT captions using REAL audio durations from ElevenLabs.
+    This is the correct approach - no guessing!
     
     Args:
-        text: The full text to caption
-        duration_seconds: Total audio duration in seconds
-        caption_lead_in_ms: How early captions should appear (default 50ms)
-        caption_lead_out_ms: How early captions should disappear (default 120ms)
+        sentences: List of sentence pieces with paragraph break info
+        durations: List of REAL audio durations (in seconds) for each sentence
+        caption_lead_in_ms: How early captions appear (default 50ms)
+        caption_lead_out_ms: How early captions disappear (default 120ms)
         paragraph_gap_ms: Gap between paragraphs (default 600ms)
         gap_ms: Gap between sentences (default 150ms)
+    
+    Returns:
+        VTT format caption string
     """
     vtt_content = "WEBVTT\n\n"
     
-    # Split into sentences
-    sentences = split_into_sentences(text)
-    
-    if not sentences:
+    if not sentences or not durations:
         return vtt_content
     
-    # Calculate timing - distribute duration across sentences by character count
-    total_chars = sum(len(s.text) for s in sentences)
-    if total_chars == 0:
-        return vtt_content
+    if len(sentences) != len(durations):
+        raise ValueError(f"Sentence count ({len(sentences)}) must match duration count ({len(durations)})")
     
     # Convert timing parameters to seconds
     caption_lead_in = caption_lead_in_ms / 1000.0
@@ -153,44 +152,40 @@ def create_simple_vtt(
     sentence_gap = gap_ms / 1000.0
     min_caption_duration = 0.3  # Minimum 300ms for readability
     
-    # Track actual audio time (when voice speaks)
+    # Track audio timeline (when voice actually speaks)
     audio_time = 0.0
     cue_number = 1
     last_caption_end = 0.0
     
-    for i, sentence in enumerate(sentences):
-        # Add gap BEFORE this sentence (in audio time)
+    for i, (sentence, real_duration) in enumerate(zip(sentences, durations)):
+        # Add gap BEFORE this sentence starts speaking
         if i > 0:
             if sentence.paragraph_break_before:
                 audio_time += paragraph_gap
             else:
                 audio_time += sentence_gap
         
-        # Calculate how long this sentence's audio will take
-        char_proportion = len(sentence.text) / total_chars
-        sentence_audio_duration = duration_seconds * char_proportion
-        
         # TIMING BREAKDOWN:
-        # audio_time = when voice STARTS speaking this sentence
-        # audio_end = when voice FINISHES speaking this sentence
-        # caption_start = when text appears (BEFORE audio_time)
-        # caption_end = when text disappears (BEFORE audio_end)
+        # audio_time        = when voice STARTS speaking
+        # real_duration     = ACTUAL duration from ElevenLabs (not a guess!)
+        # caption_start     = when text appears (BEFORE audio)
+        # caption_end       = when text disappears (BEFORE audio ends)
         
-        # CAPTION START: Lead-in means caption appears BEFORE audio
+        # Caption appears BEFORE voice starts (lead-in)
         caption_start = max(0.0, audio_time - caption_lead_in)
         
-        # AUDIO ENDS: When the voice finishes speaking this sentence
-        audio_end = audio_time + sentence_audio_duration
+        # Voice finishes speaking at this time
+        audio_end = audio_time + real_duration
         
-        # CAPTION END: Lead-out means caption disappears BEFORE audio ends
+        # Caption disappears BEFORE voice ends (lead-out)
         caption_end = audio_end - caption_lead_out
         
-        # Ensure minimum duration for readability
+        # Ensure minimum readable duration
         if caption_end - caption_start < min_caption_duration:
             caption_end = caption_start + min_caption_duration
         
-        # Prevent overlapping with previous caption
-        if i > 0 and caption_start < last_caption_end:
+        # Prevent overlap with previous caption
+        if caption_start < last_caption_end:
             caption_start = last_caption_end
             # Re-check minimum duration
             if caption_end - caption_start < min_caption_duration:
@@ -203,8 +198,6 @@ def create_simple_vtt(
         
         cue_number += 1
         last_caption_end = caption_end
-        
-        # Advance audio timeline
         audio_time = audio_end
     
     return vtt_content
