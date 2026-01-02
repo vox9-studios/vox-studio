@@ -25,7 +25,7 @@ app.add_middleware(
 )
 
 # Include narration router
-app.include_router(narration_router, prefix="/api/narration", tags=["Narration"])  # ← ADD THIS
+app.include_router(narration_router)
 
 @app.get("/")
 async def root():
