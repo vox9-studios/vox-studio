@@ -1,8 +1,28 @@
 """
-VTT caption generation from alignment data
+VTT caption generation - Improved version based on Vox9 TTS engine
 """
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, NamedTuple
 import re
+
+
+class SentencePiece(NamedTuple):
+    """Represents a sentence with paragraph break info"""
+    text: str
+    paragraph_break_before: bool
+
+
+# Abbreviations that don't end sentences
+_NON_TERMINAL_ABBREVIATIONS = {
+    "mr.", "mrs.", "ms.", "dr.", "prof.", "sr.", "jr.",
+    "etc.", "vs.", "e.g.", "i.e.", "a.m.", "p.m."
+}
+
+# Common words that start sentences
+_COMMON_SENTENCE_STARTERS = {
+    "a", "an", "and", "but", "he", "she", "it", "i", "you", "we", "they",
+    "the", "there", "these", "those", "this", "that", "what", "when", 
+    "where", "why", "how", "who", "which", "so", "then", "now"
+}
 
 
 def format_timestamp(seconds: float) -> str:
@@ -13,18 +33,164 @@ def format_timestamp(seconds: float) -> str:
     return f"{hours:02d}:{minutes:02d}:{secs:06.3f}"
 
 
+def _sentence_ends_with_abbreviation(text: str) -> bool:
+    """Check if text ends with a protected abbreviation"""
+    if not text:
+        return False
+    last_word = text.rstrip().split()
+    if not last_word:
+        return False
+    token = last_word[-1].rstrip("\"'"')]}")
+    return token.lower() in _NON_TERMINAL_ABBREVIATIONS
+
+
+def _starts_like_new_sentence(part: str) -> bool:
+    """Check if text starts like a new sentence"""
+    if not part:
+        return False
+    tokens = part.split()
+    if not tokens:
+        return False
+    first_word = tokens[0].lstrip("\"'""''([{")
+    if not first_word:
+        return False
+    return first_word.lower() in _COMMON_SENTENCE_STARTERS
+
+
+def split_into_sentences(text: str) -> List[SentencePiece]:
+    """
+    Split text into sentences with paragraph break detection.
+    Handles abbreviations like "Mr." and "Mrs." correctly.
+    """
+    # Split by double newlines (paragraphs)
+    paragraphs = text.split("\n\n")
+    sentences: List[SentencePiece] = []
+    seen_paragraph = False
+    
+    for paragraph in paragraphs:
+        paragraph = paragraph.strip()
+        if not paragraph:
+            continue
+        
+        # Split on sentence-ending punctuation followed by space
+        parts = re.split(r"(?<=[\.!?])\s+", paragraph)
+        
+        first_sentence_in_paragraph = True
+        for part in parts:
+            part = part.strip()
+            if not part:
+                continue
+            
+            # Check if we should merge with previous sentence
+            if (
+                sentences
+                and not first_sentence_in_paragraph
+                and _sentence_ends_with_abbreviation(sentences[-1].text)
+                and not _starts_like_new_sentence(part)
+            ):
+                # Merge with previous sentence
+                prev_piece = sentences[-1]
+                sentences[-1] = SentencePiece(
+                    f"{prev_piece.text} {part}",
+                    prev_piece.paragraph_break_before,
+                )
+            else:
+                # New sentence
+                sentences.append(
+                    SentencePiece(
+                        part,
+                        paragraph_break_before=seen_paragraph and first_sentence_in_paragraph,
+                    )
+                )
+            
+            first_sentence_in_paragraph = False
+        
+        seen_paragraph = True
+    
+    return sentences
+
+
+def create_simple_vtt(
+    text: str, 
+    duration_seconds: float,
+    *,
+    caption_lead_in_ms: int = 50,
+    caption_lead_out_ms: int = 120,
+    paragraph_gap_ms: int = 600,
+    gap_ms: int = 150
+) -> str:
+    """
+    Create VTT captions with smart timing based on character proportions.
+    
+    Args:
+        text: The full text to caption
+        duration_seconds: Total audio duration in seconds
+        caption_lead_in_ms: How early captions should appear (default 50ms)
+        caption_lead_out_ms: How early captions should disappear (default 120ms)
+        paragraph_gap_ms: Gap between paragraphs (default 600ms)
+        gap_ms: Gap between sentences (default 150ms)
+    """
+    vtt_content = "WEBVTT\n\n"
+    
+    # Split into sentences
+    sentences = split_into_sentences(text)
+    
+    if not sentences:
+        return vtt_content
+    
+    # Calculate character-based weights for timing distribution
+    total_chars = sum(len(s.text) for s in sentences)
+    if total_chars == 0:
+        return vtt_content
+    
+    # Convert timing parameters to seconds
+    caption_lead_in = caption_lead_in_ms / 1000.0
+    caption_lead_out = caption_lead_out_ms / 1000.0
+    paragraph_gap = paragraph_gap_ms / 1000.0
+    sentence_gap = gap_ms / 1000.0
+    min_caption_duration = 0.3  # Minimum 300ms for readability
+    
+    current_time = 0.0
+    cue_number = 1
+    
+    for i, sentence in enumerate(sentences):
+        # Calculate this sentence's duration based on character proportion
+        char_proportion = len(sentence.text) / total_chars
+        sentence_duration = duration_seconds * char_proportion
+        
+        # Add gap before this sentence if needed
+        if i > 0:
+            if sentence.paragraph_break_before:
+                current_time += paragraph_gap
+            else:
+                current_time += sentence_gap
+        
+        # Calculate start and end times
+        start_time = max(0.0, current_time - caption_lead_in)
+        end_time = current_time + sentence_duration - caption_lead_out
+        
+        # Ensure minimum duration
+        if end_time - start_time < min_caption_duration:
+            end_time = start_time + min_caption_duration
+        
+        # Ensure we don't overlap with next caption
+        # (This will be handled by lead-in on next iteration)
+        
+        # Write VTT cue
+        vtt_content += f"{cue_number}\n"
+        vtt_content += f"{format_timestamp(start_time)} --> {format_timestamp(end_time)}\n"
+        vtt_content += f"{sentence.text}\n\n"
+        
+        cue_number += 1
+        current_time += sentence_duration
+    
+    return vtt_content
+
+
 def create_vtt_from_alignment(alignment_data: Dict) -> str:
     """
-    Create VTT captions from ElevenLabs alignment data
-    
-    alignment_data should have structure:
-    {
-        "alignment": {
-            "characters": ["H", "e", "l", "l", "o", ...],
-            "character_start_times_seconds": [0.0, 0.1, 0.2, ...],
-            "character_end_times_seconds": [0.1, 0.2, 0.3, ...]
-        }
-    }
+    Create VTT captions from ElevenLabs alignment data.
+    This is used when ElevenLabs provides word-level timing.
     """
     vtt_content = "WEBVTT\n\n"
     
@@ -63,7 +229,7 @@ def create_vtt_from_alignment(alignment_data: Dict) -> str:
             current_word = ""
             word_start = None
     
-    # Create VTT cues (group 5-10 words per caption)
+    # Create VTT cues (group 6-10 words per caption)
     words_per_caption = 8
     cue_number = 1
     
@@ -81,56 +247,5 @@ def create_vtt_from_alignment(alignment_data: Dict) -> str:
         vtt_content += f"{text}\n\n"
         
         cue_number += 1
-    
-    return vtt_content
-
-
-def create_simple_vtt(text: str, duration_seconds: float) -> str:
-    """
-    Create simple VTT captions when alignment data is not available
-    Splits text into sentences based on estimated timing
-    Preserves all punctuation and proper sentence structure
-    """
-    vtt_content = "WEBVTT\n\n"
-    
-    # Split text into sentences (preserve all punctuation)
-    # Split on sentence-ending punctuation followed by space or end of string
-    sentences = re.split(r'([.!?]+(?:\s+|$))', text)
-    
-    # Reconstruct sentences with their punctuation
-    full_sentences = []
-    i = 0
-    while i < len(sentences):
-        if i + 1 < len(sentences) and sentences[i].strip():
-            # Combine sentence with its punctuation
-            sentence = sentences[i] + sentences[i + 1]
-            full_sentences.append(sentence.strip())
-            i += 2
-        elif sentences[i].strip():
-            full_sentences.append(sentences[i].strip())
-            i += 1
-        else:
-            i += 1
-    
-    if not full_sentences:
-        return vtt_content
-    
-    # Estimate time per sentence based on character count
-    total_chars = sum(len(s) for s in full_sentences)
-    
-    current_time = 0.0
-    for i, sentence in enumerate(full_sentences):
-        # Calculate duration based on character proportion
-        char_proportion = len(sentence) / max(1, total_chars)
-        sentence_duration = duration_seconds * char_proportion
-        
-        start_time = current_time
-        end_time = current_time + sentence_duration
-        
-        vtt_content += f"{i + 1}\n"
-        vtt_content += f"{format_timestamp(start_time)} --> {format_timestamp(end_time)}\n"
-        vtt_content += f"{sentence}\n\n"
-        
-        current_time = end_time
     
     return vtt_content
