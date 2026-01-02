@@ -689,22 +689,23 @@
 
         </div>
         
-        <!-- Step 3: Episode Details -->
+        <!-- Step 3: Episode Details with Image Upload -->
         <div class="panel" id="panel-3">
             <h2>Episode Details</h2>
             
-            <div style="max-width: 600px;">
+            <div style="max-width: 700px;">
                 <!-- Title -->
                 <div style="margin-bottom: 20px;">
-                    <label for="episodeTitle">Episode Title</label>
+                    <label for="episodeTitle">Episode Title *</label>
                     <input 
                         type="text" 
                         id="episodeTitle"
                         placeholder="Enter episode title..."
                         style="margin-bottom: 0;"
+                        required
                     />
                 </div>
-
+        
                 <!-- Description -->
                 <div style="margin-bottom: 20px;">
                     <label for="episodeDescription">Description</label>
@@ -715,27 +716,129 @@
                         style="min-height: 120px; margin-bottom: 0;"
                     ></textarea>
                 </div>
-
-                <!-- Cover Image URL -->
-                <div style="margin-bottom: 20px;">
-                    <label for="coverImageUrl">Cover Image URL (optional)</label>
-                    <input 
-                        type="url" 
-                        id="coverImageUrl"
-                        placeholder="https://example.com/cover.jpg"
-                        style="margin-bottom: 8px;"
-                    />
-                    <div style="font-size: 0.85rem; color: #666;">
-                        Recommended: 1400x1400px, JPG or PNG
+        
+                <!-- Cover Images Section -->
+                <div style="margin-bottom: 24px;">
+                    <label style="margin-bottom: 16px; display: block;">Cover Images</label>
+                    
+                    <!-- Square Cover (Primary) -->
+                    <div style="background: #0f0f0f; padding: 20px; border-radius: 8px; margin-bottom: 16px; border: 1px solid #3d3d3d;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                            <div>
+                                <div style="font-weight: 500; color: #fff; margin-bottom: 4px;">
+                                    📱 Square (1:1) - Primary
+                                </div>
+                                <div style="font-size: 0.85rem; color: #666;">
+                                    1400x1400px • For podcast platforms
+                                </div>
+                            </div>
+                            <input 
+                                type="file" 
+                                id="squareCoverInput"
+                                accept="image/jpeg,image/jpg,image/png"
+                                style="display: none;"
+                                onchange="handleImageUpload(event, 'square')"
+                            />
+                            <button 
+                                class="btn-secondary" 
+                                onclick="document.getElementById('squareCoverInput').click()"
+                                style="padding: 8px 16px; font-size: 0.85rem;">
+                                Choose File
+                            </button>
+                        </div>
+                        <div id="squarePreview" style="display: none; margin-top: 12px;">
+                            <img id="squarePreviewImg" style="width: 150px; height: 150px; object-fit: cover; border-radius: 8px; border: 2px solid #3ea6ff;" />
+                            <button onclick="removeImage('square')" style="display: block; margin-top: 8px; padding: 6px 12px; background: transparent; border: 1px solid #f44336; color: #f44336; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
+                                Remove
+                            </button>
+                        </div>
+                        <div id="squareUploadProgress" style="display: none; margin-top: 12px;">
+                            <div style="width: 100%; height: 4px; background: #3d3d3d; border-radius: 2px; overflow: hidden;">
+                                <div style="height: 100%; background: #3ea6ff; width: 0%; transition: width 0.3s;" id="squareProgressBar"></div>
+                            </div>
+                            <div style="font-size: 0.85rem; color: #aaa; margin-top: 4px;">Uploading...</div>
+                        </div>
+                    </div>
+        
+                    <!-- Mobile Cover (9:16) -->
+                    <div style="background: #0f0f0f; padding: 20px; border-radius: 8px; margin-bottom: 16px; border: 1px solid #3d3d3d;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                            <div>
+                                <div style="font-weight: 500; color: #fff; margin-bottom: 4px;">
+                                    📲 Mobile (9:16) - Optional
+                                </div>
+                                <div style="font-size: 0.85rem; color: #666;">
+                                    1080x1920px • For TikTok, Reels, Shorts
+                                </div>
+                            </div>
+                            <input 
+                                type="file" 
+                                id="mobileCoverInput"
+                                accept="image/jpeg,image/jpg,image/png"
+                                style="display: none;"
+                                onchange="handleImageUpload(event, 'mobile')"
+                            />
+                            <button 
+                                class="btn-secondary" 
+                                onclick="document.getElementById('mobileCoverInput').click()"
+                                style="padding: 8px 16px; font-size: 0.85rem;">
+                                Choose File
+                            </button>
+                        </div>
+                        <div id="mobilePreview" style="display: none; margin-top: 12px;">
+                            <img id="mobilePreviewImg" style="width: 84px; height: 150px; object-fit: cover; border-radius: 8px; border: 2px solid #3ea6ff;" />
+                            <button onclick="removeImage('mobile')" style="display: block; margin-top: 8px; padding: 6px 12px; background: transparent; border: 1px solid #f44336; color: #f44336; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
+                                Remove
+                            </button>
+                        </div>
+                        <div id="mobileUploadProgress" style="display: none; margin-top: 12px;">
+                            <div style="width: 100%; height: 4px; background: #3d3d3d; border-radius: 2px; overflow: hidden;">
+                                <div style="height: 100%; background: #3ea6ff; width: 0%; transition: width 0.3s;" id="mobileProgressBar"></div>
+                            </div>
+                            <div style="font-size: 0.85rem; color: #aaa; margin-top: 4px;">Uploading...</div>
+                        </div>
+                    </div>
+        
+                    <!-- Widescreen Cover (16:9) -->
+                    <div style="background: #0f0f0f; padding: 20px; border-radius: 8px; margin-bottom: 16px; border: 1px solid #3d3d3d;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                            <div>
+                                <div style="font-weight: 500; color: #fff; margin-bottom: 4px;">
+                                    🖥️ Widescreen (16:9) - Optional
+                                </div>
+                                <div style="font-size: 0.85rem; color: #666;">
+                                    1920x1080px • For YouTube, website embeds
+                                </div>
+                            </div>
+                            <input 
+                                type="file" 
+                                id="widescreenCoverInput"
+                                accept="image/jpeg,image/jpg,image/png"
+                                style="display: none;"
+                                onchange="handleImageUpload(event, 'widescreen')"
+                            />
+                            <button 
+                                class="btn-secondary" 
+                                onclick="document.getElementById('widescreenCoverInput').click()"
+                                style="padding: 8px 16px; font-size: 0.85rem;">
+                                Choose File
+                            </button>
+                        </div>
+                        <div id="widescreenPreview" style="display: none; margin-top: 12px;">
+                            <img id="widescreenPreviewImg" style="width: 267px; height: 150px; object-fit: cover; border-radius: 8px; border: 2px solid #3ea6ff;" />
+                            <button onclick="removeImage('widescreen')" style="display: block; margin-top: 8px; padding: 6px 12px; background: transparent; border: 1px solid #f44336; color: #f44336; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
+                                Remove
+                            </button>
+                        </div>
+                        <div id="widescreenUploadProgress" style="display: none; margin-top: 12px;">
+                            <div style="width: 100%; height: 4px; background: #3d3d3d; border-radius: 2px; overflow: hidden;">
+                                <div style="height: 100%; background: #3ea6ff; width: 0%; transition: width 0.3s;" id="widescreenProgressBar"></div>
+                            </div>
+                            <div style="font-size: 0.85rem; color: #aaa; margin-top: 4px;">Uploading...</div>
+                        </div>
                     </div>
                 </div>
-
-                <!-- Cover Preview -->
-                <div id="coverPreview" style="display: none; margin-bottom: 20px; padding: 16px; background: #0f0f0f; border-radius: 8px; border: 1px solid #3d3d3d;">
-                    <div style="color: #aaa; font-size: 0.85rem; margin-bottom: 8px;">Preview:</div>
-                    <img id="coverPreviewImg" style="width: 200px; height: 200px; object-fit: cover; border-radius: 8px;" />
-                </div>
-
+        
                 <!-- Publish Toggle -->
                 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
                     <input 
@@ -748,12 +851,13 @@
                     </label>
                 </div>
             </div>
-
+        
             <div class="button-group">
                 <button class="btn-secondary" onclick="goToStep(2)">Back</button>
                 <button class="btn-primary" onclick="goToStep(4)">Continue</button>
             </div>
         </div>
+
         
         <!-- Step 4: Generate -->
         <div class="panel" id="panel-4">
@@ -838,6 +942,13 @@
         let vttUrl = null;
         let starredVoices = new Set();
         let currentFilter = 'all';
+
+        // Cover image URLs (stored after upload)
+        let coverUrls = {
+            square: null,
+            mobile: null,
+            widescreen: null
+        };
         
         // Load starred voices from localStorage
         function loadStarredVoices() {
@@ -1067,7 +1178,78 @@
             document.getElementById('estimated-duration').textContent = `~${minutes}m ${seconds}s`;
             document.getElementById('credits-required').textContent = charCount.toLocaleString();
         }
+
+        // Handle image upload
+        async function handleImageUpload(event, formatType) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            // Validate file type
+            if (!file.type.match(/image\/(jpeg|jpg|png)/)) {
+                alert('Please select a JPG or PNG image');
+                return;
+            }
+            
+            // Validate file size (max 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('Image must be under 5MB');
+                return;
+            }
+            
+            // Show progress
+            const progressDiv = document.getElementById(`${formatType}UploadProgress`);
+            const progressBar = document.getElementById(`${formatType}ProgressBar`);
+            progressDiv.style.display = 'block';
+            progressBar.style.width = '30%';
+            
+            try {
+                // Create FormData
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                // Upload
+                const response = await fetch(`${API_URL}/api/narration/upload-cover/${AUTHOR_ID}?format_type=${formatType}`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                progressBar.style.width = '70%';
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Upload failed');
+                }
+                
+                const result = await response.json();
+                coverUrls[formatType] = result.url;
+                
+                progressBar.style.width = '100%';
+                
+                setTimeout(() => {
+                    progressDiv.style.display = 'none';
+                    showImagePreview(formatType, result.url);
+                }, 500);
+                
+            } catch (error) {
+                alert('Upload failed: ' + error.message);
+                progressDiv.style.display = 'none';
+                progressBar.style.width = '0%';
+            }
+        }
         
+        function showImagePreview(formatType, url) {
+            const preview = document.getElementById(`${formatType}Preview`);
+            const img = document.getElementById(`${formatType}PreviewImg`);
+            img.src = url;
+            preview.style.display = 'block';
+        }
+        
+        function removeImage(formatType) {
+            coverUrls[formatType] = null;
+            document.getElementById(`${formatType}Preview`).style.display = 'none';
+            document.getElementById(`${formatType}CoverInput`).value = '';
+        }
+           
         async function startGeneration() {
             document.getElementById('generation-ready').style.display = 'none';
             document.getElementById('generation-progress').style.display = 'block';
@@ -1086,7 +1268,9 @@
                         voice_name: selectedVoice.name,
                         episode_title: document.getElementById('episodeTitle').value,
                         episode_description: document.getElementById('episodeDescription').value,
-                        cover_image_url: document.getElementById('coverImageUrl').value,
+                        cover_square_url: coverUrls.square,
+                        cover_mobile_url: coverUrls.mobile,
+                        cover_widescreen_url: coverUrls.widescreen,
                         is_published: document.getElementById('isPublished').checked
                     })
                 });
@@ -1137,6 +1321,7 @@
                 document.getElementById('progress-fill').style.width = '0%';
             }
         }
+
         
         function setupPreview() {
             const audio = document.getElementById('audio-player');
