@@ -1,42 +1,61 @@
 """
 ElevenLabs API integration for text-to-speech generation
+Adapted from Vox9 TTS engine
 """
 import os
-from elevenlabs import generate, voices, set_api_key, Voice, VoiceSettings
+import requests
 from typing import Optional, List, Dict
-import tempfile
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
-
-# Set API key for elevenlabs library
-if ELEVENLABS_API_KEY:
-    set_api_key(ELEVENLABS_API_KEY)
+ELEVEN_TTS_URL_TMPL = "https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+ELEVEN_VOICES_URL = "https://api.elevenlabs.io/v1/voices"
 
 
 def get_available_voices() -> List[Dict]:
     """Get list of available ElevenLabs voices"""
+    if not ELEVENLABS_API_KEY:
+        return []
+    
+    headers = {"xi-api-key": ELEVENLABS_API_KEY}
+    
     try:
-        all_voices = voices()
+        response = requests.get(ELEVEN_VOICES_URL, headers=headers, timeout=30)
+        response.raise_for_status()
+        
+        data = response.json()
+        voices = data.get("voices", [])
         
         # Return simplified voice list
         voice_list = []
-        for voice in all_voices:
+        for v in voices:
+            voice_id = v.get("voice_id", "").strip()
+            if not voice_id:
+                continue
+                
             voice_list.append({
-                "voice_id": voice.voice_id,
-                "name": voice.name,
-                "preview_url": voice.preview_url if hasattr(voice, 'preview_url') else None,
-                "description": voice.description if hasattr(voice, 'description') else "",
-                "category": voice.category if hasattr(voice, 'category') else "generated"
+                "voice_id": voice_id,
+                "name": v.get("name", "Unnamed").strip(),
+                "preview_url": v.get("preview_url"),
+                "description": v.get("description", ""),
+                "category": v.get("category", "generated")
             })
+        
         return voice_list
+        
     except Exception as e:
         print(f"Error fetching voices: {e}")
         return []
 
 
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10)
+)
 def generate_audio_bytes(
     text: str, 
     voice_id: str,
+    model_id: str = "eleven_monolingual_v1",
     stability: float = 0.5,
     similarity_boost: float = 0.75,
     style: float = 0.0,
@@ -44,160 +63,61 @@ def generate_audio_bytes(
     speaking_rate: float = 1.0
 ) -> Optional[bytes]:
     """
-    Generate audio from text using ElevenLabs with custom voice settings
-    
-    Args:
-        text: Text to convert to speech
-        voice_id: ElevenLabs voice ID
-        stability: Voice stability (0.0 - 1.0). Lower = more variable/expressive
-        similarity_boost: Voice similarity (0.0 - 1.0). Higher = closer to original voice
-        style: Style exaggeration (0.0 - 1.0). Higher = more exaggerated delivery
-        use_speaker_boost: Enable speaker boost for clarity
-        speaking_rate: Speaking speed (0.25 - 4.0). 1.0 = normal, 0.5 = slow, 2.0 = fast
-    
+    Generate audio from text using ElevenLabs
     Returns audio bytes if successful, None otherwise
     """
+    if not ELEVENLABS_API_KEY:
+        print("ELEVENLABS_API_KEY not set")
+        return None
+    
     try:
-        # Clamp speaking rate to valid range
-        speaking_rate = max(0.25, min(4.0, speaking_rate))
+        url = ELEVEN_TTS_URL_TMPL.format(voice_id=voice_id)
         
-        # Create voice settings
-        voice_settings = VoiceSettings(
-            stability=stability,
-            similarity_boost=similarity_boost,
-            style=style,
-            use_speaker_boost=use_speaker_boost
+        headers = {
+            "xi-api-key": ELEVENLABS_API_KEY,
+            "Content-Type": "application/json",
+            "Accept": "audio/mpeg"
+        }
+        
+        payload = {
+            "text": text,
+            "model_id": model_id,
+            "voice_settings": {
+                "stability": stability,
+                "similarity_boost": similarity_boost,
+                "style": style,
+                "use_speaker_boost": use_speaker_boost
+            }
+        }
+        
+        response = requests.post(
+            url,
+            json=payload,
+            headers=headers,
+            timeout=60,
+            stream=True
         )
         
-        audio = generate(
-            text=text,
-            voice=voice_id,
-            model="eleven_monolingual_v1",
-            voice_settings=voice_settings
-        )
+        response.raise_for_status()
         
-        # Convert generator to bytes
-        audio_bytes = b''.join(audio)
-        
-        # Note: ElevenLabs doesn't have a direct speaking_rate parameter
-        # If you need speed adjustment, you'd need to process the audio
-        # with ffmpeg or similar tool after generation
-        # For now, we'll track it for future processing
+        # Read response as bytes
+        audio_bytes = b''.join(response.iter_content(chunk_size=8192))
         
         return audio_bytes
         
     except Exception as e:
         print(f"Error generating audio: {e}")
-        return None
-
-
-def generate_audio_to_file(
-    text: str, 
-    voice_id: str, 
-    output_path: str,
-    stability: float = 0.5,
-    similarity_boost: float = 0.75,
-    style: float = 0.0,
-    use_speaker_boost: bool = True,
-    speaking_rate: float = 1.0
-) -> bool:
-    """
-    Generate audio from text and save to file with custom settings
-    Returns True if successful, False otherwise
-    """
-    try:
-        audio_bytes = generate_audio_bytes(
-            text=text,
-            voice_id=voice_id,
-            stability=stability,
-            similarity_boost=similarity_boost,
-            style=style,
-            use_speaker_boost=use_speaker_boost,
-            speaking_rate=speaking_rate
-        )
-        
-        if audio_bytes:
-            with open(output_path, 'wb') as f:
-                f.write(audio_bytes)
-            return True
-        return False
-        
-    except Exception as e:
-        print(f"Error generating audio to file: {e}")
-        return False
-
-
-def adjust_audio_speed(input_path: str, output_path: str, speed: float = 1.0) -> bool:
-    """
-    Adjust audio speed using ffmpeg (if available)
-    
-    Args:
-        input_path: Path to input audio file
-        output_path: Path to save adjusted audio
-        speed: Speed multiplier (0.5 = half speed, 2.0 = double speed)
-    
-    Returns True if successful, False otherwise
-    """
-    try:
-        import subprocess
-        
-        # Check if ffmpeg is available
-        try:
-            subprocess.run(['ffmpeg', '-version'], capture_output=True, check=True)
-        except:
-            print("ffmpeg not available - speed adjustment skipped")
-            # Just copy the file
-            import shutil
-            shutil.copy(input_path, output_path)
-            return True
-        
-        # Use atempo filter for speed adjustment
-        # atempo valid range is 0.5 to 2.0
-        # For speeds outside this range, chain multiple filters
-        
-        if speed < 0.5 or speed > 2.0:
-            # Need to chain atempo filters
-            filters = []
-            remaining_speed = speed
-            
-            while remaining_speed > 2.0:
-                filters.append('atempo=2.0')
-                remaining_speed /= 2.0
-            
-            while remaining_speed < 0.5:
-                filters.append('atempo=0.5')
-                remaining_speed /= 0.5
-            
-            if remaining_speed != 1.0:
-                filters.append(f'atempo={remaining_speed}')
-            
-            filter_string = ','.join(filters)
-        else:
-            filter_string = f'atempo={speed}'
-        
-        # Run ffmpeg
-        cmd = [
-            'ffmpeg',
-            '-i', input_path,
-            '-filter:a', filter_string,
-            '-y',  # Overwrite output
-            output_path
-        ]
-        
-        subprocess.run(cmd, capture_output=True, check=True)
-        return True
-        
-    except Exception as e:
-        print(f"Error adjusting audio speed: {e}")
-        return False
+        raise  # Let tenacity retry
 
 
 def test_api_key() -> bool:
     """Test if ElevenLabs API key is valid"""
+    if not ELEVENLABS_API_KEY:
+        return False
+    
     try:
-        # Try to fetch voices as a test
-        all_voices = voices()
-        return len(all_voices) > 0
+        voices = get_available_voices()
+        return len(voices) > 0
     except Exception as e:
         print(f"API key test failed: {e}")
         return False
@@ -206,15 +126,10 @@ def test_api_key() -> bool:
 def get_audio_duration_estimate(text: str, speaking_rate: float = 1.0) -> float:
     """
     Estimate audio duration based on text length
-    
-    Args:
-        text: Text to estimate duration for
-        speaking_rate: Speaking rate multiplier (1.0 = normal, 0.5 = slow, 2.0 = fast)
-    
     Average speaking rate: ~150 words per minute at normal speed
     """
     word_count = len(text.split())
-    # 150 words per minute = 2.5 words per second at normal rate
+    # 150 words per minute = 2.5 words per second
     base_duration = word_count / 2.5
     # Adjust for speaking rate
     duration_seconds = base_duration / speaking_rate
