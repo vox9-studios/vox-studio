@@ -366,3 +366,42 @@ async def process_generation_job(job_id: str, db: Session = Depends(get_db)):
         
         print(f"✗ Job {job_id} failed: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/episodes/{author_id}")
+async def get_author_episodes(
+    author_id: str,
+    db: Session = Depends(get_db)
+):
+    """Get all completed episodes for an author"""
+    # Validate author exists
+    author = db.query(AuthorProfile).filter(AuthorProfile.user_id == author_id).first()
+    if not author:
+        raise HTTPException(status_code=404, detail="Author not found")
+    
+    # Get all completed jobs
+    jobs = db.query(GenerationJob).filter(
+        GenerationJob.author_id == author_id,
+        GenerationJob.status == "completed"
+    ).order_by(GenerationJob.created_at.desc()).all()
+    
+    # Format response
+    episodes = []
+    for job in jobs:
+        episodes.append({
+            "id": str(job.id),
+            "author_id": str(job.author_id),
+            "episode_title": job.episode_title,
+            "episode_description": job.episode_description,
+            "cover_square_url": job.cover_square_url,
+            "cover_mobile_url": job.cover_mobile_url,
+            "cover_widescreen_url": job.cover_widescreen_url,
+            "is_published": job.is_published,
+            "playlist_id": str(job.playlist_id) if job.playlist_id else None,
+            "audio_url": job.audio_url,
+            "vtt_url": job.vtt_url,
+            "status": job.status,
+            "created_at": job.created_at.isoformat(),
+            "completed_at": job.completed_at.isoformat() if job.completed_at else None
+        })
+    
+    return episodes
