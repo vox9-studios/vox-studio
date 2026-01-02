@@ -55,10 +55,12 @@ class GenerationJob(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     author_id = Column(UUID(as_uuid=True), ForeignKey("author_profiles.user_id"), nullable=False)
     
-    # Episode metadata (NEW!)
+    # Episode metadata
     episode_title = Column(String(500))
     episode_description = Column(Text)
-    cover_image_url = Column(Text)
+    cover_square_url = Column(Text)      # 1:1 (1400x1400) for podcasts
+    cover_mobile_url = Column(Text)      # 9:16 (1080x1920) for social media  
+    cover_widescreen_url = Column(Text)  # 16:9 (1920x1080) for video
     is_published = Column(Boolean, default=False)
     
     # Input
