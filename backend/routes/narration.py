@@ -23,7 +23,6 @@ class VoiceInfo(BaseModel):
     name: str
     preview_url: Optional[str] = None
     description: Optional[str] = None
-    description: str = ""
     category: str = "generated"
 
 
