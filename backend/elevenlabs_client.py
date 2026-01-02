@@ -11,11 +11,22 @@ ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 ELEVEN_TTS_URL_TMPL = "https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
 ELEVEN_VOICES_URL = "https://api.elevenlabs.io/v1/voices"
 
+# Default voices to ensure they're always available
+DEFAULT_VOICES = [
+    {"voice_id": "pNInz6obpgDQGcFmaJgB", "name": "Adam", "description": "Deep, confident male voice"},
+    {"voice_id": "flq6f7yk4E4fJM5XTYuZ", "name": "Michael", "description": "Natural, versatile male voice"},
+    {"voice_id": "ErXwobaYiN019PkySvjV", "name": "Antoni", "description": "Well-rounded male voice"},
+    {"voice_id": "2EiwWnXFnvU5JabPnv8n", "name": "Clyde", "description": "Rich, warm male voice"},
+    {"voice_id": "nPczCjzI2devNBz1zQrb", "name": "Brian", "description": "Deep, resonant and comforting"},
+    {"voice_id": "EXAVITQu4vr4xnSDxMaL", "name": "Sarah", "description": "Mature, reassuring, confident"},
+    {"voice_id": "t0jbNlBVZ17f02VDIeMI", "name": "Jessie", "description": "Friendly educator voice"},
+]
+
 
 def get_available_voices() -> List[Dict]:
-    """Get list of available ElevenLabs voices"""
+    """Get list of available ElevenLabs voices with fallback to defaults"""
     if not ELEVENLABS_API_KEY:
-        return []
+        return DEFAULT_VOICES
     
     headers = {"xi-api-key": ELEVENLABS_API_KEY}
     
@@ -28,11 +39,14 @@ def get_available_voices() -> List[Dict]:
         
         # Return simplified voice list
         voice_list = []
+        seen_ids = set()
+        
         for v in voices:
             voice_id = v.get("voice_id", "").strip()
-            if not voice_id:
+            if not voice_id or voice_id in seen_ids:
                 continue
-                
+            
+            seen_ids.add(voice_id)
             voice_list.append({
                 "voice_id": voice_id,
                 "name": v.get("name", "Unnamed").strip(),
@@ -41,11 +55,17 @@ def get_available_voices() -> List[Dict]:
                 "category": v.get("category", "generated")
             })
         
+        # Ensure default voices are included
+        for default_voice in DEFAULT_VOICES:
+            if default_voice["voice_id"] not in seen_ids:
+                voice_list.insert(0, default_voice)
+        
         return voice_list
         
     except Exception as e:
         print(f"Error fetching voices: {e}")
-        return []
+        # Return default voices on error
+        return DEFAULT_VOICES
 
 
 @retry(
