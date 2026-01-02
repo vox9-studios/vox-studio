@@ -122,7 +122,8 @@ def create_simple_vtt(
     gap_ms: int = 150
 ) -> str:
     """
-    Create VTT captions with smart timing based on character proportions.
+    Create VTT captions with sentence-by-sentence timing.
+    Each sentence gets proper lead-in so captions appear BEFORE audio speaks.
     
     Args:
         text: The full text to caption
@@ -140,7 +141,7 @@ def create_simple_vtt(
     if not sentences:
         return vtt_content
     
-    # Calculate character-based weights for timing distribution
+    # Calculate timing - distribute duration across sentences by character count
     total_chars = sum(len(s.text) for s in sentences)
     if total_chars == 0:
         return vtt_content
@@ -152,39 +153,59 @@ def create_simple_vtt(
     sentence_gap = gap_ms / 1000.0
     min_caption_duration = 0.3  # Minimum 300ms for readability
     
-    current_time = 0.0
+    # Track actual audio time (when voice speaks)
+    audio_time = 0.0
     cue_number = 1
+    last_caption_end = 0.0
     
     for i, sentence in enumerate(sentences):
-        # Calculate this sentence's duration based on character proportion
-        char_proportion = len(sentence.text) / total_chars
-        sentence_duration = duration_seconds * char_proportion
-        
-        # Add gap before this sentence if needed
+        # Add gap BEFORE this sentence (in audio time)
         if i > 0:
             if sentence.paragraph_break_before:
-                current_time += paragraph_gap
+                audio_time += paragraph_gap
             else:
-                current_time += sentence_gap
+                audio_time += sentence_gap
         
-        # Calculate start and end times
-        start_time = max(0.0, current_time - caption_lead_in)
-        end_time = current_time + sentence_duration - caption_lead_out
+        # Calculate how long this sentence's audio will take
+        char_proportion = len(sentence.text) / total_chars
+        sentence_audio_duration = duration_seconds * char_proportion
         
-        # Ensure minimum duration
-        if end_time - start_time < min_caption_duration:
-            end_time = start_time + min_caption_duration
+        # TIMING BREAKDOWN:
+        # audio_time = when voice STARTS speaking this sentence
+        # audio_end = when voice FINISHES speaking this sentence
+        # caption_start = when text appears (BEFORE audio_time)
+        # caption_end = when text disappears (BEFORE audio_end)
         
-        # Ensure we don't overlap with next caption
-        # (This will be handled by lead-in on next iteration)
+        # CAPTION START: Lead-in means caption appears BEFORE audio
+        caption_start = max(0.0, audio_time - caption_lead_in)
+        
+        # AUDIO ENDS: When the voice finishes speaking this sentence
+        audio_end = audio_time + sentence_audio_duration
+        
+        # CAPTION END: Lead-out means caption disappears BEFORE audio ends
+        caption_end = audio_end - caption_lead_out
+        
+        # Ensure minimum duration for readability
+        if caption_end - caption_start < min_caption_duration:
+            caption_end = caption_start + min_caption_duration
+        
+        # Prevent overlapping with previous caption
+        if i > 0 and caption_start < last_caption_end:
+            caption_start = last_caption_end
+            # Re-check minimum duration
+            if caption_end - caption_start < min_caption_duration:
+                caption_end = caption_start + min_caption_duration
         
         # Write VTT cue
         vtt_content += f"{cue_number}\n"
-        vtt_content += f"{format_timestamp(start_time)} --> {format_timestamp(end_time)}\n"
+        vtt_content += f"{format_timestamp(caption_start)} --> {format_timestamp(caption_end)}\n"
         vtt_content += f"{sentence.text}\n\n"
         
         cue_number += 1
-        current_time += sentence_duration
+        last_caption_end = caption_end
+        
+        # Advance audio timeline
+        audio_time = audio_end
     
     return vtt_content
 
