@@ -9,6 +9,7 @@ from datetime import date, datetime
 import tempfile
 import io
 from pathlib import Path
+from io import BytesIO
 
 from database import get_db
 from models import AuthorProfile, GenerationJob
@@ -217,7 +218,6 @@ async def process_generation_job(job_id: str, db: Session = Depends(get_db)):
             # Measure REAL duration using mutagen (lightweight MP3 parser)
             try:
                 from mutagen.mp3 import MP3
-                from io import BytesIO
                 
                 audio_file = MP3(BytesIO(audio_bytes))
                 real_duration = audio_file.info.length  # Actual duration in seconds!
@@ -234,17 +234,42 @@ async def process_generation_job(job_id: str, db: Session = Depends(get_db)):
             audio_chunks.append(audio_bytes)
             durations.append(real_duration)
         
-        # Step 3: Combine audio chunks with gaps
-        print("Combining audio chunks...")
+        # Step 3: Combine audio chunks WITH silence gaps using pydub
+        print("Combining audio chunks with silence gaps...")
         
-        # For now, just concatenate MP3s directly
-        # TODO: Add silence between sentences/paragraphs using pydub
-        combined_audio = b''.join(audio_chunks)
+        from pydub import AudioSegment
+        
+        # Create empty audio to build on
+        combined = AudioSegment.empty()
+        
+        # Define silence durations (match VTT gap settings)
+        silence_gap = AudioSegment.silent(duration=job.caption_gap or 150)  # milliseconds
+        paragraph_silence = AudioSegment.silent(duration=600)  # milliseconds
+        
+        for i, (audio_bytes, sentence) in enumerate(zip(audio_chunks, sentences)):
+            # Load this sentence's audio
+            segment = AudioSegment.from_file(BytesIO(audio_bytes), format="mp3")
+            
+            # Add gap BEFORE this sentence (except first)
+            if i > 0:
+                if sentence.paragraph_break_before:
+                    combined += paragraph_silence
+                    print(f"  → Added 600ms paragraph gap before sentence {i+1}")
+                else:
+                    combined += silence_gap
+                    print(f"  → Added {job.caption_gap or 150}ms gap before sentence {i+1}")
+            
+            # Add the sentence audio
+            combined += segment
+        
+        # Export combined audio to MP3 bytes
+        combined_audio = combined.export(format="mp3").read()
         
         total_duration = sum(durations)
-        print(f"Total audio duration: {total_duration:.2f}s")
+        print(f"Total audio duration (speech only): {total_duration:.2f}s")
+        print(f"Total audio duration (with gaps): {len(combined) / 1000.0:.2f}s")
         
-        # Step 4: Create VTT with REAL durations (no guessing!)
+        # Step 4: Create VTT with REAL durations (matching the audio gaps!)
         print("Creating captions with real timing...")
         
         vtt_content = create_vtt_from_real_durations(
@@ -252,8 +277,8 @@ async def process_generation_job(job_id: str, db: Session = Depends(get_db)):
             durations=durations,
             caption_lead_in_ms=job.caption_lead_in,
             caption_lead_out_ms=job.caption_lead_out,
-            paragraph_gap_ms=600,
-            gap_ms=job.caption_gap
+            paragraph_gap_ms=600,              # Matches paragraph_silence above
+            gap_ms=job.caption_gap or 150      # Matches silence_gap above
         )
         
         # Step 5: Upload to S3
@@ -282,7 +307,7 @@ async def process_generation_job(job_id: str, db: Session = Depends(get_db)):
             status="completed",
             audio_url=audio_url,
             vtt_url=vtt_url,
-            duration_seconds=total_duration,
+            duration_seconds=len(combined) / 1000.0,  # Actual duration with gaps
             sentence_count=len(sentences)
         )
         
