@@ -616,6 +616,44 @@
     </div>
     
     <div class="container">
+        <!-- Tab Switcher (NEW) -->
+        <div style="display: flex; gap: 16px; margin-bottom: 32px; border-bottom: 2px solid #3d3d3d;">
+            <button 
+                id="aiTab" 
+                class="tab-btn active-tab" 
+                onclick="switchTab('ai')"
+                style="padding: 16px 32px; background: transparent; border: none; color: #aaa; font-size: 1.1rem; font-weight: 500; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s;"
+            >
+                🤖 AI Narration
+            </button>
+            <button 
+                id="uploadTab" 
+                class="tab-btn" 
+                onclick="switchTab('upload')"
+                style="padding: 16px 32px; background: transparent; border: none; color: #aaa; font-size: 1.1rem; font-weight: 500; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s;"
+            >
+                📁 Upload Audio
+            </button>
+        </div>
+
+        <style>
+            .tab-btn.active-tab {
+                color: #3ea6ff !important;
+                border-bottom-color: #3ea6ff !important;
+            }
+            
+            .tab-content {
+                display: none;
+            }
+            
+            .tab-content.active {
+                display: block;
+            }
+        </style>
+
+        <!-- AI Narration Tab Content (Wrap existing) -->
+        <div id="aiContent" class="tab-content active">
+        
         <!-- Progress Steps -->
         <div class="steps-container">
             <div class="steps">
@@ -1622,7 +1660,7 @@
             loadCredits();
         }
         
-        async function publishEpisode() {
+async function publishEpisode() {
             if (!generationJob || !generationJob.id) {
                 alert('No episode to publish!');
                 return;
@@ -1651,6 +1689,195 @@
             } catch (error) {
                 console.error('Publish error:', error);
                 alert('❌ Failed to publish episode. Please try again.');
+            }
+        }
+
+        // Tab switching
+        function switchTab(tab) {
+            const aiTab = document.getElementById('aiTab');
+            const uploadTab = document.getElementById('uploadTab');
+            const aiContent = document.getElementById('aiContent');
+            const uploadContent = document.getElementById('uploadContent');
+            
+            if (tab === 'ai') {
+                aiTab.classList.add('active-tab');
+                uploadTab.classList.remove('active-tab');
+                aiContent.classList.add('active');
+                uploadContent.classList.remove('active');
+            } else {
+                uploadTab.classList.add('active-tab');
+                aiTab.classList.remove('active-tab');
+                uploadContent.classList.add('active');
+                aiContent.classList.remove('active');
+            }
+        }
+
+        // Upload state
+        let uploadedAudioUrl = null;
+        let uploadedVttUrl = null;
+
+        // Drag handlers
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.currentTarget.style.borderColor = '#3ea6ff';
+        }
+
+        function handleDragLeave(e) {
+            e.currentTarget.style.borderColor = '#3d3d3d';
+        }
+
+        function handleAudioDrop(e) {
+            e.preventDefault();
+            e.currentTarget.style.borderColor = '#3d3d3d';
+            const files = e.dataTransfer.files;
+            if (files.length > 0) uploadAudioFile(files[0]);
+        }
+
+        function handleVttDrop(e) {
+            e.preventDefault();
+            e.currentTarget.style.borderColor = '#3d3d3d';
+            const files = e.dataTransfer.files;
+            if (files.length > 0) uploadVttFile(files[0]);
+        }
+
+        function handleAudioFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) uploadAudioFile(file);
+        }
+
+        function handleVttFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) uploadVttFile(file);
+        }
+
+        async function uploadAudioFile(file) {
+            if (!file.type.includes('audio/mpeg') && !file.name.endsWith('.mp3')) {
+                alert('Please upload an MP3 file');
+                return;
+            }
+            
+            if (file.size > 100 * 1024 * 1024) {
+                alert('File size must be less than 100MB');
+                return;
+            }
+            
+            document.getElementById('audioUploadProgress').style.display = 'block';
+            document.getElementById('audioUploadSuccess').style.display = 'none';
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const response = await fetch(`${API_URL}/api/narration/upload-audio/${AUTHOR_ID}`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) throw new Error('Upload failed');
+                
+                const data = await response.json();
+                uploadedAudioUrl = data.audio_url;
+                
+                document.getElementById('audioUploadProgress').style.display = 'none';
+                document.getElementById('audioUploadSuccess').style.display = 'block';
+                document.getElementById('audioDropZone').style.borderColor = '#4caf50';
+                document.getElementById('audioUploadIcon').textContent = '✅';
+                
+                updatePublishButton();
+                
+            } catch (error) {
+                console.error('Upload error:', error);
+                alert('Failed to upload audio file');
+                document.getElementById('audioUploadProgress').style.display = 'none';
+            }
+        }
+
+        async function uploadVttFile(file) {
+            if (!file.name.endsWith('.vtt')) {
+                alert('Please upload a VTT file');
+                return;
+            }
+            
+            document.getElementById('vttUploadProgress').style.display = 'block';
+            document.getElementById('vttUploadSuccess').style.display = 'none';
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const response = await fetch(`${API_URL}/api/narration/upload-vtt/${AUTHOR_ID}`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) throw new Error('Upload failed');
+                
+                const data = await response.json();
+                uploadedVttUrl = data.vtt_url;
+                
+                document.getElementById('vttUploadProgress').style.display = 'none';
+                document.getElementById('vttUploadSuccess').style.display = 'block';
+                document.getElementById('vttDropZone').style.borderColor = '#4caf50';
+                
+            } catch (error) {
+                console.error('Upload error:', error);
+                alert('Failed to upload VTT file');
+                document.getElementById('vttUploadProgress').style.display = 'none';
+            }
+        }
+
+        function updatePublishButton() {
+            const btn = document.getElementById('publishUploadedBtn');
+            const statusText = document.getElementById('uploadStatusText');
+            const title = document.getElementById('uploadEpisodeTitle').value;
+            
+            if (uploadedAudioUrl && title) {
+                btn.disabled = false;
+                statusText.textContent = 'Ready to publish!';
+                statusText.style.color = '#4caf50';
+            } else if (!uploadedAudioUrl) {
+                btn.disabled = true;
+                statusText.textContent = 'Upload audio file to continue';
+                statusText.style.color = '#666';
+            } else {
+                btn.disabled = true;
+                statusText.textContent = 'Add episode title to continue';
+                statusText.style.color = '#666';
+            }
+        }
+
+        async function publishUploadedEpisode() {
+            const title = document.getElementById('uploadEpisodeTitle').value;
+            const description = document.getElementById('uploadEpisodeDescription').value;
+            const playlistId = document.getElementById('uploadPlaylistSelect').value;
+            
+            if (!uploadedAudioUrl || !title) {
+                alert('Please upload audio and add a title');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/api/narration/create-uploaded-episode/${AUTHOR_ID}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        episode_title: title,
+                        episode_description: description,
+                        audio_url: uploadedAudioUrl,
+                        vtt_url: uploadedVttUrl,
+                        playlist_id: playlistId || null,
+                        is_published: true
+                    })
+                });
+                
+                if (!response.ok) throw new Error('Failed to create episode');
+                
+                alert('✅ Episode published successfully!');
+                window.location.href = 'dashboard.html';
+                
+            } catch (error) {
+                console.error('Publish error:', error);
+                alert('Failed to publish episode');
             }
         }
     </script>
@@ -1689,7 +1916,7 @@
                     </button>
                 </div>
     
-                <!-- Existing Playlists -->
+<!-- Existing Playlists -->
                 <div>
                     <h3 style="margin: 0 0 16px 0; font-size: 1.1rem; color: #fff;">Your Playlists</h3>
                     <div id="playlistsList" style="display: flex; flex-direction: column; gap: 12px;">
@@ -1701,6 +1928,154 @@
                 </div>
             </div>
         </div>
+
+        </div> <!-- Close AI Content Tab -->
+
+        <!-- Upload Audio Tab (NEW) -->
+        <div id="uploadContent" class="tab-content">
+            <div class="panel">
+                <h2 style="font-size: 1.8rem; margin-bottom: 24px;">Upload Your Audio</h2>
+                
+                <!-- Step 1: Upload MP3 -->
+                <div style="margin-bottom: 32px;">
+                    <h3 style="font-size: 1.2rem; margin-bottom: 16px;">1. Upload Audio File (MP3)</h3>
+                    
+                    <div 
+                        id="audioDropZone" 
+                        class="upload-zone"
+                        ondrop="handleAudioDrop(event)"
+                        ondragover="handleDragOver(event)"
+                        ondragleave="handleDragLeave(event)"
+                        onclick="document.getElementById('audioFileInput').click()"
+                        style="border: 2px dashed #3d3d3d; border-radius: 12px; padding: 40px; text-align: center; background: #1a1a1a; transition: all 0.3s; cursor: pointer;"
+                    >
+                        <div id="audioUploadIcon" style="font-size: 3rem; margin-bottom: 16px;">🎵</div>
+                        <p style="font-size: 1.1rem; color: #fff; margin-bottom: 8px;">
+                            Drop MP3 file here or click to browse
+                        </p>
+                        <p style="font-size: 0.9rem; color: #666;">
+                            Maximum file size: 100MB
+                        </p>
+                    </div>
+                    
+                    <input 
+                        type="file" 
+                        id="audioFileInput" 
+                        accept=".mp3,audio/mpeg" 
+                        style="display: none;"
+                        onchange="handleAudioFileSelect(event)"
+                    />
+                    
+                    <div id="audioUploadProgress" style="display: none; margin-top: 16px;">
+                        <div style="background: #3d3d3d; border-radius: 8px; overflow: hidden; height: 8px;">
+                            <div id="audioProgressBar" style="background: #3ea6ff; height: 100%; width: 0%; transition: width 0.3s;"></div>
+                        </div>
+                        <p id="audioProgressText" style="margin-top: 8px; color: #aaa; font-size: 0.9rem;">Uploading...</p>
+                    </div>
+                    
+                    <div id="audioUploadSuccess" style="display: none; margin-top: 16px; padding: 16px; background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 8px; color: #4caf50;">
+                        ✅ Audio uploaded successfully!
+                    </div>
+                </div>
+                
+                <!-- Step 2: Upload VTT (Optional) -->
+                <div style="margin-bottom: 32px;">
+                    <h3 style="font-size: 1.2rem; margin-bottom: 16px;">2. Upload Captions (Optional)</h3>
+                    
+                    <div 
+                        id="vttDropZone" 
+                        class="upload-zone"
+                        ondrop="handleVttDrop(event)"
+                        ondragover="handleDragOver(event)"
+                        ondragleave="handleDragLeave(event)"
+                        onclick="document.getElementById('vttFileInput').click()"
+                        style="border: 2px dashed #3d3d3d; border-radius: 12px; padding: 40px; text-align: center; background: #1a1a1a; transition: all 0.3s; cursor: pointer;"
+                    >
+                        <div style="font-size: 3rem; margin-bottom: 16px;">📝</div>
+                        <p style="font-size: 1.1rem; color: #fff; margin-bottom: 8px;">
+                            Drop VTT file here or click to browse
+                        </p>
+                        <p style="font-size: 0.9rem; color: #666;">
+                            WebVTT caption file (optional)
+                        </p>
+                    </div>
+                    
+                    <input 
+                        type="file" 
+                        id="vttFileInput" 
+                        accept=".vtt,text/vtt" 
+                        style="display: none;"
+                        onchange="handleVttFileSelect(event)"
+                    />
+                    
+                    <div id="vttUploadProgress" style="display: none; margin-top: 16px;">
+                        <div style="background: #3d3d3d; border-radius: 8px; overflow: hidden; height: 8px;">
+                            <div id="vttProgressBar" style="background: #3ea6ff; height: 100%; width: 0%; transition: width 0.3s;"></div>
+                        </div>
+                        <p id="vttProgressText" style="margin-top: 8px; color: #aaa; font-size: 0.9rem;">Uploading...</p>
+                    </div>
+                    
+                    <div id="vttUploadSuccess" style="display: none; margin-top: 16px; padding: 16px; background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 8px; color: #4caf50;">
+                        ✅ Captions uploaded successfully!
+                    </div>
+                </div>
+                
+                <!-- Step 3: Episode Details -->
+                <div style="margin-bottom: 32px;">
+                    <h3 style="font-size: 1.2rem; margin-bottom: 16px;">3. Episode Details</h3>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #aaa;">Episode Title</label>
+                        <input 
+                            type="text" 
+                            id="uploadEpisodeTitle" 
+                            placeholder="My Episode Title"
+                            style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #3d3d3d; border-radius: 8px; color: #f1f1f1; font-size: 1rem;"
+                            oninput="updatePublishButton()"
+                        />
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #aaa;">Episode Description</label>
+                        <textarea 
+                            id="uploadEpisodeDescription" 
+                            placeholder="Describe your episode..."
+                            rows="4"
+                            style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #3d3d3d; border-radius: 8px; color: #f1f1f1; font-size: 1rem; resize: vertical;"
+                        ></textarea>
+                    </div>
+                    
+                    <!-- Playlist Selection -->
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #aaa;">Playlist (Optional)</label>
+                        <select 
+                            id="uploadPlaylistSelect"
+                            style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #3d3d3d; border-radius: 8px; color: #f1f1f1; font-size: 1rem;"
+                        >
+                            <option value="">Standalone Episode</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Publish Button -->
+                <div style="text-align: center; padding-top: 24px; border-top: 1px solid #3d3d3d;">
+                    <button 
+                        id="publishUploadedBtn"
+                        onclick="publishUploadedEpisode()" 
+                        class="btn-primary"
+                        style="padding: 16px 48px; font-size: 1.1rem;"
+                        disabled
+                    >
+                        Publish Episode
+                    </button>
+                    <p style="margin-top: 12px; color: #666; font-size: 0.9rem;" id="uploadStatusText">
+                        Upload audio file to continue
+                    </p>
+                </div>
+            </div>
+        </div>
+
+    </div> <!-- Close container -->
     
 </body>
 </html>
