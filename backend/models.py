@@ -11,7 +11,7 @@ class AuthorProfile(Base):
     __tablename__ = "author_profiles"
     
     user_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    auth_user_id = Column(UUID(as_uuid=True), ForeignKey("auth.users.id"))  # NEW
+    auth_user_id = Column(UUID(as_uuid=True))
     username = Column(String(50), unique=True)  # NEW
     display_name = Column(String(100))  # NEW
     bio = Column(Text)  # NEW
