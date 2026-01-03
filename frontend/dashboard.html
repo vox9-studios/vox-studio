@@ -92,6 +92,13 @@
             display: flex;
             min-height: calc(100vh - 65px);
         }
+        <button 
+            onclick="openPlaylistManager()" 
+            class="btn-create" 
+            style="background: #272727; border: 1px solid #3d3d3d;">
+            <span>📂</span>
+            <span>Manage Playlists</span>
+        </button>
         
         /* Sidebar */
         .sidebar {
@@ -1170,6 +1177,121 @@
             document.getElementById('editCoverPreview').style.display = 'none';
             document.getElementById('editEpisodeCoverInput').value = '';
         }
+        function openPlaylistManager() {
+            document.getElementById('playlistManagerModal').style.display = 'flex';
+            renderPlaylistManager();
+        }
+        
+        function closePlaylistManager() {
+            document.getElementById('playlistManagerModal').style.display = 'none';
+            document.getElementById('newPlaylistTitle').value = '';
+            document.getElementById('newPlaylistDescription').value = '';
+        }
+        
+        function renderPlaylistManager() {
+            const container = document.getElementById('playlistsList');
+            
+            if (allPlaylists.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #666;">
+                        <div style="font-size: 3rem; margin-bottom: 12px;">📂</div>
+                        <div>No playlists yet. Create one above!</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = allPlaylists.map(playlist => {
+                const color = generateColorFromText(playlist.title);
+                return `
+                    <div style="background: #0f0f0f; padding: 16px; border-radius: 8px; border: 1px solid #3d3d3d; display: flex; align-items: center; gap: 16px;">
+                        <div style="width: 48px; height: 48px; border-radius: 8px; background: ${color}; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 600; color: white; flex-shrink: 0;">
+                            ${playlist.title.charAt(0).toUpperCase()}
+                        </div>
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="font-weight: 600; color: #fff; margin-bottom: 4px;">${playlist.title}</div>
+                            <div style="font-size: 0.85rem; color: #666;">${playlist.episode_count} episodes</div>
+                            ${playlist.description ? `<div style="font-size: 0.85rem; color: #aaa; margin-top: 4px;">${playlist.description}</div>` : ''}
+                        </div>
+                        <button 
+                            onclick="deletePlaylist('${playlist.id}')" 
+                            style="padding: 8px 16px; background: transparent; border: 1px solid #f44336; color: #f44336; border-radius: 6px; cursor: pointer; font-size: 0.85rem; flex-shrink: 0;"
+                            onmouseover="this.style.background='#f44336'; this.style.color='#fff'"
+                            onmouseout="this.style.background='transparent'; this.style.color='#f44336'">
+                            🗑️ Delete
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        async function createNewPlaylist() {
+            const title = document.getElementById('newPlaylistTitle').value.trim();
+            const description = document.getElementById('newPlaylistDescription').value.trim();
+            
+            if (!title) {
+                alert('Please enter a playlist title');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/api/playlists/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        author_id: AUTHOR_ID,
+                        title: title,
+                        description: description || null
+                    })
+                });
+                
+                if (!response.ok) throw new Error('Failed to create playlist');
+                
+                // Clear inputs
+                document.getElementById('newPlaylistTitle').value = '';
+                document.getElementById('newPlaylistDescription').value = '';
+                
+                // Reload playlists
+                await loadPlaylists();
+                renderPlaylistManager();
+                renderPlaylistSidebar();
+                
+                alert('✅ Playlist created successfully!');
+                
+            } catch (error) {
+                console.error('Create playlist error:', error);
+                alert('Failed to create playlist');
+            }
+        }
+        
+        async function deletePlaylist(playlistId) {
+            const playlist = allPlaylists.find(p => p.id === playlistId);
+            const playlistTitle = playlist?.title || 'this playlist';
+            
+            if (!confirm(`Delete "${playlistTitle}"?\n\nEpisodes in this playlist will become standalone episodes.`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/api/playlists/${playlistId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (!response.ok) throw new Error('Failed to delete playlist');
+                
+                // Reload playlists and episodes
+                await loadPlaylists();
+                await loadEpisodes();
+                renderPlaylistManager();
+                renderPlaylistSidebar();
+                
+                alert('✅ Playlist deleted successfully!');
+                
+            } catch (error) {
+                console.error('Delete playlist error:', error);
+                alert('Failed to delete playlist');
+            }
+        }
     </script>
     <!-- Audio Player Modal -->
     <div id="audioPlayerModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); z-index: 9999; align-items: center; justify-content: center;">
@@ -1305,6 +1427,54 @@
                 </button>
                 <button onclick="saveEpisodeChanges()" style="padding: 12px 24px; background: #3ea6ff; border: none; color: #fff; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: 600;">
                     Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- Playlist Manager Modal -->
+    <div id="playlistManagerModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 9999; align-items: center; justify-content: center;">
+        <div style="background: #212121; border-radius: 12px; padding: 32px; max-width: 700px; width: 90%; max-height: 80vh; overflow-y: auto; border: 1px solid #3d3d3d;">
+            <h2 style="font-size: 1.8rem; margin-bottom: 24px; color: #fff;">Manage Playlists</h2>
+            
+            <!-- Create New Playlist -->
+            <div style="background: #0f0f0f; padding: 20px; border-radius: 8px; margin-bottom: 24px; border: 1px solid #3d3d3d;">
+                <h3 style="font-size: 1.2rem; margin-bottom: 16px; color: #fff;">Create New Playlist</h3>
+                
+                <div style="margin-bottom: 12px;">
+                    <input 
+                        type="text" 
+                        id="newPlaylistTitle" 
+                        placeholder="Playlist Title"
+                        style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #3d3d3d; border-radius: 8px; color: #f1f1f1; font-size: 1rem; margin-bottom: 12px;"
+                    />
+                    <textarea 
+                        id="newPlaylistDescription" 
+                        placeholder="Description (optional)"
+                        rows="2"
+                        style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #3d3d3d; border-radius: 8px; color: #f1f1f1; font-size: 1rem; resize: vertical;"
+                    ></textarea>
+                </div>
+                
+                <button 
+                    onclick="createNewPlaylist()" 
+                    style="padding: 10px 20px; background: #3ea6ff; border: none; color: #fff; border-radius: 6px; cursor: pointer; font-size: 0.95rem; font-weight: 600;">
+                    ➕ Create Playlist
+                </button>
+            </div>
+            
+            <!-- Existing Playlists -->
+            <div>
+                <h3 style="font-size: 1.2rem; margin-bottom: 16px; color: #fff;">Your Playlists</h3>
+                <div id="playlistsList" style="display: flex; flex-direction: column; gap: 12px;">
+                    <div style="text-align: center; padding: 20px; color: #666;">
+                        Loading playlists...
+                    </div>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; padding-top: 24px; border-top: 1px solid #3d3d3d;">
+                <button onclick="closePlaylistManager()" style="padding: 12px 24px; background: transparent; border: 1px solid #3d3d3d; color: #aaa; border-radius: 8px; cursor: pointer; font-size: 1rem;">
+                    Close
                 </button>
             </div>
         </div>
