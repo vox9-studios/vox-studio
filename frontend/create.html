@@ -1709,6 +1709,9 @@ async function publishEpisode() {
                 aiTab.classList.remove('active-tab');
                 uploadContent.classList.add('active');
                 aiContent.classList.remove('active');
+                
+                // Load playlists when switching to upload tab
+                loadPlaylistsForUpload();
             }
         }
 
@@ -1945,6 +1948,25 @@ async function publishEpisode() {
             } catch (error) {
                 console.error('Publish error:', error);
                 alert('Failed to publish episode');
+            }
+        }
+        async function loadPlaylistsForUpload() {
+            try {
+                const response = await fetch(`${API_URL}/api/playlists/${AUTHOR_ID}`);
+                const playlists = await response.json();
+                
+                const select = document.getElementById('uploadPlaylistSelect');
+                select.innerHTML = '<option value="">Standalone Episode</option>';
+                
+                playlists.forEach(playlist => {
+                    const option = document.createElement('option');
+                    option.value = playlist.id;
+                    option.textContent = `${playlist.title} (${playlist.episode_count} episodes)`;
+                    select.appendChild(option);
+                });
+                
+            } catch (error) {
+                console.error('Error loading playlists:', error);
             }
         }
     </script>
