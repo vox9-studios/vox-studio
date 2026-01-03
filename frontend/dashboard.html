@@ -1004,11 +1004,17 @@
                 
                 const captionText = document.getElementById('captionText');
                 if (current) {
+                    // Currently on a caption - show it in blue
                     captionText.textContent = current.text;
                     captionText.style.color = '#3ea6ff';
+                } else if (currentCaptions.length === 0) {
+                    // No captions were loaded - show message
+                    captionText.textContent = 'No captions available';
+                    captionText.style.color = '#aaa';
                 } else {
-                    captionText.textContent = currentCaptions.length > 0 ? 'Listening...' : 'No captions available';
-                    captionText.style.color = '#fff';
+                    // Between captions - show empty
+                    captionText.textContent = '';
+                    captionText.style.color = '#aaa';
                 }
             }, 100);
         }
