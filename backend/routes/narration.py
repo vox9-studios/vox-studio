@@ -8,6 +8,7 @@ from typing import Optional, List
 from datetime import date, datetime
 import tempfile
 import io
+import os
 import uuid
 from pathlib import Path
 from io import BytesIO
