@@ -8,6 +8,7 @@ from typing import Optional, List
 from datetime import date, datetime
 import tempfile
 import io
+import uuid
 from pathlib import Path
 from io import BytesIO
 
@@ -429,4 +430,149 @@ async def publish_episode(
         "message": "Episode published successfully",
         "episode_id": str(job.id),
         "is_published": True
+    }
+
+# Add to backend/routes/narration.py
+
+@router.post("/upload-audio/{author_id}")
+async def upload_audio_file(
+    author_id: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    """Upload MP3 audio file directly (no AI generation)"""
+    
+    # Validate author
+    author = db.query(AuthorProfile).filter(AuthorProfile.user_id == author_id).first()
+    if not author:
+        raise HTTPException(status_code=404, detail="Author not found")
+    
+    # Validate file type
+    if not file.filename.endswith('.mp3'):
+        raise HTTPException(status_code=400, detail="Only MP3 files are supported")
+    
+    try:
+        # Read file content
+        contents = await file.read()
+        
+        # Generate unique filename
+        file_id = str(uuid.uuid4())
+        s3_key = f"vox-platform/uploads/{author_id}/{file_id}.mp3"
+        
+        # Upload to S3
+        s3_client.put_object(
+            Bucket=S3_BUCKET_NAME,
+            Key=s3_key,
+            Body=contents,
+            ContentType='audio/mpeg'
+        )
+        
+        # Get public URL
+        audio_url = f"https://{S3_BUCKET_NAME}.s3.{os.getenv('AWS_REGION', 'eu-west-2')}.amazonaws.com/{s3_key}"
+        
+        return {
+            "success": True,
+            "audio_url": audio_url,
+            "file_id": file_id
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
+
+@router.post("/upload-vtt/{author_id}")
+async def upload_vtt_file(
+    author_id: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    """Upload VTT caption file"""
+    
+    # Validate author
+    author = db.query(AuthorProfile).filter(AuthorProfile.user_id == author_id).first()
+    if not author:
+        raise HTTPException(status_code=404, detail="Author not found")
+    
+    # Validate file type
+    if not file.filename.endswith('.vtt'):
+        raise HTTPException(status_code=400, detail="Only VTT files are supported")
+    
+    try:
+        # Read file content
+        contents = await file.read()
+        
+        # Generate unique filename
+        file_id = str(uuid.uuid4())
+        s3_key = f"vox-platform/captions/{author_id}/{file_id}.vtt"
+        
+        # Upload to S3
+        s3_client.put_object(
+            Bucket=S3_BUCKET_NAME,
+            Key=s3_key,
+            Body=contents,
+            ContentType='text/vtt'
+        )
+        
+        # Get public URL
+        vtt_url = f"https://{S3_BUCKET_NAME}.s3.{os.getenv('AWS_REGION', 'eu-west-2')}.amazonaws.com/{s3_key}"
+        
+        return {
+            "success": True,
+            "vtt_url": vtt_url,
+            "file_id": file_id
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
+
+@router.post("/create-uploaded-episode/{author_id}")
+async def create_uploaded_episode(
+    author_id: str,
+    request: dict,
+    db: Session = Depends(get_db)
+):
+    """Create episode from uploaded audio (no AI generation)"""
+    
+    # Validate author
+    author = db.query(AuthorProfile).filter(AuthorProfile.user_id == author_id).first()
+    if not author:
+        raise HTTPException(status_code=404, detail="Author not found")
+    
+    # Create generation job record (marked as uploaded)
+    job = GenerationJob(
+        id=uuid.uuid4(),
+        author_id=author_id,
+        episode_title=request.get('episode_title'),
+        episode_description=request.get('episode_description'),
+        cover_square_url=request.get('cover_square_url'),
+        cover_mobile_url=request.get('cover_mobile_url'),
+        cover_widescreen_url=request.get('cover_widescreen_url'),
+        playlist_id=request.get('playlist_id'),
+        is_published=request.get('is_published', False),
+        
+        # Uploaded file URLs
+        audio_url=request.get('audio_url'),
+        vtt_url=request.get('vtt_url'),
+        
+        # Mark as uploaded (not AI generated)
+        input_text="[Uploaded Audio]",
+        voice_id="uploaded",
+        voice_name="Uploaded",
+        
+        # Status
+        status="completed",  # Already completed (no generation needed)
+        progress=100,
+        created_at=datetime.utcnow(),
+        completed_at=datetime.utcnow()
+    )
+    
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+    
+    return {
+        "success": True,
+        "job_id": str(job.id),
+        "message": "Episode created successfully"
     }
