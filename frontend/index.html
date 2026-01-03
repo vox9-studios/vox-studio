@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vox Platform</title>
+    <title>Vox Platform - Discover AI-Narrated Stories</title>
     <style>
         * {
             margin: 0;
@@ -12,272 +12,712 @@
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0f0f0f;
+            color: #f1f1f1;
             min-height: 100vh;
+        }
+        
+        /* Header/Nav */
+        .nav {
+            background: #212121;
+            border-bottom: 1px solid #3d3d3d;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+        
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #3ea6ff 0%, #0066cc 100%);
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            font-size: 1.5rem;
         }
         
-        .container {
-            background: white;
+        .nav-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        
+        .btn-secondary {
+            padding: 10px 20px;
+            background: transparent;
+            border: 1px solid #3d3d3d;
+            color: #f1f1f1;
             border-radius: 20px;
-            padding: 40px;
-            max-width: 500px;
-            width: 100%;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
         }
         
-        h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        .btn-secondary:hover {
+            border-color: #3ea6ff;
+            color: #3ea6ff;
+        }
+        
+        .btn-primary {
+            padding: 10px 24px;
+            background: #3ea6ff;
+            border: none;
+            color: #fff;
+            border-radius: 20px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-primary:hover {
+            background: #1c8fff;
+        }
+        
+        /* Hero Section */
+        .hero {
+            padding: 80px 24px;
+            text-align: center;
+            background: linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%);
+            border-bottom: 1px solid #3d3d3d;
+        }
+        
+        .hero-title {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, #3ea6ff 0%, #0066cc 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
         
-        p {
+        .hero-subtitle {
+            font-size: 1.3rem;
+            color: #aaa;
+            margin-bottom: 40px;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .hero-actions {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .search-bar {
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto 32px;
+            position: relative;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 16px 50px 16px 20px;
+            background: #212121;
+            border: 1px solid #3d3d3d;
+            border-radius: 30px;
+            color: #f1f1f1;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+        
+        .search-input:focus {
+            outline: none;
+            border-color: #3ea6ff;
+            background: #1a1a1a;
+        }
+        
+        .search-icon {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
             color: #666;
-            margin-bottom: 30px;
+            font-size: 1.2rem;
         }
         
-        .status {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
+        /* Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 60px 24px;
         }
         
-        .status-item {
+        .section-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 12px;
-            padding: 8px 0;
+            margin-bottom: 32px;
         }
         
-        .status-item:last-child {
-            margin-bottom: 0;
-        }
-        
-        .status-label {
+        .section-title {
+            font-size: 2rem;
             font-weight: 600;
-            color: #333;
+            color: #fff;
         }
         
-        .badge {
-            padding: 6px 16px;
-            border-radius: 20px;
-            font-size: 0.875rem;
-            font-weight: 600;
-        }
-        
-        .badge.success {
-            background: #10b981;
-            color: white;
-        }
-        
-        .badge.error {
-            background: #ef4444;
-            color: white;
-        }
-        
-        .badge.warning {
-            background: #f59e0b;
-            color: white;
-        }
-        
-        .btn {
-            width: 100%;
-            padding: 15px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 10px;
+        .section-subtitle {
             font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            text-decoration: none;
-            display: block;
-            text-align: center;
-            margin-bottom: 10px;
-        }
-        
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
-        }
-        
-        .btn-secondary {
-            background: #f1f3f5;
-            color: #495057;
-        }
-        
-        .btn-secondary:hover {
-            background: #e9ecef;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-        }
-        
-        .loading {
-            text-align: center;
             color: #666;
+            margin-top: 4px;
+        }
+        
+        /* Author Grid */
+        .author-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 24px;
+            margin-bottom: 60px;
+        }
+        
+        .author-card {
+            background: #212121;
+            border: 1px solid #3d3d3d;
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        
+        .author-card:hover {
+            transform: translateY(-4px);
+            border-color: #3ea6ff;
+            box-shadow: 0 8px 24px rgba(62, 166, 255, 0.2);
+        }
+        
+        .author-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            margin: 0 auto 16px;
+            background: linear-gradient(135deg, #3ea6ff 0%, #0066cc 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            color: #fff;
+        }
+        
+        .author-name {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+        
+        .author-username {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 12px;
+        }
+        
+        .author-bio {
+            font-size: 0.9rem;
+            color: #aaa;
+            line-height: 1.5;
+            margin-bottom: 16px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .author-stats {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            padding-top: 16px;
+            border-top: 1px solid #3d3d3d;
+        }
+        
+        .stat {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #3ea6ff;
+        }
+        
+        .stat-label {
+            font-size: 0.8rem;
+            color: #666;
+        }
+        
+        /* Episode Grid */
+        .episode-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+        }
+        
+        .episode-card {
+            background: #212121;
+            border: 1px solid #3d3d3d;
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        
+        .episode-card:hover {
+            transform: translateY(-4px);
+            border-color: #3ea6ff;
+            box-shadow: 0 8px 24px rgba(62, 166, 255, 0.2);
+        }
+        
+        .episode-cover {
+            width: 100%;
+            height: 180px;
+            background: linear-gradient(135deg, #3d3d3d 0%, #1a1a1a 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+            color: #666;
+        }
+        
+        .episode-cover img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .episode-info {
             padding: 20px;
         }
         
+        .episode-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 8px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .episode-description {
+            font-size: 0.9rem;
+            color: #aaa;
+            line-height: 1.5;
+            margin-bottom: 12px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .episode-author {
+            font-size: 0.85rem;
+            color: #3ea6ff;
+            margin-bottom: 8px;
+        }
+        
+        .episode-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            color: #666;
+            padding-top: 12px;
+            border-top: 1px solid #3d3d3d;
+        }
+        
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: #666;
+        }
+        
+        .empty-icon {
+            font-size: 4rem;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+        
+        .empty-title {
+            font-size: 1.3rem;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+        
+        .empty-subtitle {
+            font-size: 0.95rem;
+            color: #666;
+        }
+        
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+        
         .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid #f3f4f6;
-            border-top-color: #667eea;
+            width: 50px;
+            height: 50px;
+            border: 4px solid #3d3d3d;
+            border-top-color: #3ea6ff;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
-            margin: 0 auto 15px;
+            margin: 0 auto 20px;
         }
         
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
         
-        .stats {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
+        /* Footer */
+        .footer {
+            background: #1a1a1a;
+            border-top: 1px solid #3d3d3d;
+            padding: 40px 24px;
+            text-align: center;
+            color: #666;
+            margin-top: 80px;
+        }
+        
+        .footer-links {
+            display: flex;
+            gap: 24px;
+            justify-content: center;
             margin-bottom: 20px;
         }
         
-        .stat-card {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
+        .footer-link {
+            color: #aaa;
+            text-decoration: none;
+            transition: color 0.2s;
         }
         
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #667eea;
-            margin-bottom: 5px;
+        .footer-link:hover {
+            color: #3ea6ff;
         }
         
-        .stat-label {
-            font-size: 0.875rem;
-            color: #666;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        @media (max-width: 500px) {
-            .container {
-                padding: 30px 20px;
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2.5rem;
             }
             
-            h1 {
-                font-size: 2rem;
+            .hero-subtitle {
+                font-size: 1.1rem;
+            }
+            
+            .section-title {
+                font-size: 1.5rem;
+            }
+            
+            .author-grid,
+            .episode-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🎙️ Vox Platform</h1>
-        <p>Audio storytelling for creators</p>
-        
-        <div id="status" class="status">
-            <div class="loading">
-                <div class="spinner"></div>
-                <div>Checking API status...</div>
-            </div>
-        </div>
-        
-        <div id="stats" class="stats" style="display: none;">
-            <div class="stat-card">
-                <div class="stat-value" id="authorCount">0</div>
-                <div class="stat-label">Authors</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="playlistCount">0</div>
-                <div class="stat-label">Playlists</div>
-            </div>
-        </div>
-        
-        <a href="https://vox-platform-api.onrender.com/docs" class="btn" target="_blank">
-            📚 View API Documentation
+    <!-- Navigation -->
+    <nav class="nav">
+        <a href="/" class="logo">
+            <div class="logo-icon">🎙️</div>
+            <span>Vox Platform</span>
         </a>
+        <div class="nav-actions">
+            <a href="login.html" class="btn-secondary">Sign In</a>
+            <a href="signup.html" class="btn-primary">For Creators</a>
+        </div>
+    </nav>
+    
+    <!-- Hero Section -->
+    <section class="hero">
+        <h1 class="hero-title">Discover AI-Narrated Stories</h1>
+        <p class="hero-subtitle">
+            Listen to captivating stories brought to life by AI narration. 
+            Support your favorite creators and explore new worlds.
+        </p>
         
-        <button class="btn btn-secondary" onclick="location.reload()">
-            🔄 Refresh Status
-        </button>
+        <div class="search-bar">
+            <input 
+                type="text" 
+                id="searchInput"
+                class="search-input" 
+                placeholder="Search authors or episodes..."
+                oninput="handleSearch()"
+            />
+            <span class="search-icon">🔍</span>
+        </div>
+        
+        <div class="hero-actions">
+            <a href="#authors" class="btn-primary" style="font-size: 1.1rem; padding: 14px 32px;">Browse Creators</a>
+            <a href="signup.html" class="btn-secondary" style="font-size: 1.1rem; padding: 14px 32px;">Start Creating</a>
+        </div>
+    </section>
+    
+    <!-- Featured Authors -->
+    <div class="container" id="authors">
+        <div class="section-header">
+            <div>
+                <h2 class="section-title">Featured Creators</h2>
+                <p class="section-subtitle">Discover talented storytellers on Vox Platform</p>
+            </div>
+        </div>
+        
+        <div id="authorsContainer" class="loading">
+            <div class="spinner"></div>
+            <p>Loading authors...</p>
+        </div>
     </div>
+    
+    <!-- Latest Episodes -->
+    <div class="container">
+        <div class="section-header">
+            <div>
+                <h2 class="section-title">Latest Episodes</h2>
+                <p class="section-subtitle">Fresh content from our creators</p>
+            </div>
+        </div>
+        
+        <div id="episodesContainer" class="loading">
+            <div class="spinner"></div>
+            <p>Loading episodes...</p>
+        </div>
+    </div>
+    
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-links">
+            <a href="#" class="footer-link">About</a>
+            <a href="#" class="footer-link">Terms</a>
+            <a href="#" class="footer-link">Privacy</a>
+            <a href="signup.html" class="footer-link">For Creators</a>
+        </div>
+        <p>&copy; 2026 Vox Platform. AI-Narrated Stories.</p>
+    </footer>
     
     <script>
         const API_URL = 'https://vox-platform-api.onrender.com';
         
-        async function checkStatus() {
+        let allAuthors = [];
+        let allEpisodes = [];
+        
+        // Load data on page load
+        loadAuthors();
+        loadLatestEpisodes();
+        
+        async function loadAuthors() {
             try {
-                // Check health
-                const healthResponse = await fetch(`${API_URL}/health`);
-                const health = await healthResponse.json();
-                
-                // Get counts
-                const authorsResponse = await fetch(`${API_URL}/api/authors`);
-                const authors = await authorsResponse.json();
-                
-                const playlistsResponse = await fetch(`${API_URL}/api/playlists`);
-                const playlists = await playlistsResponse.json();
-                
-                // Update status display
-                document.getElementById('status').innerHTML = `
-                    <div class="status-item">
-                        <span class="status-label">API Status</span>
-                        <span class="badge ${health.status === 'ok' ? 'success' : 'error'}">
-                            ${health.status}
-                        </span>
-                    </div>
-                    <div class="status-item">
-                        <span class="status-label">Database</span>
-                        <span class="badge ${health.database === 'connected' ? 'success' : 'error'}">
-                            ${health.database}
-                        </span>
-                    </div>
-                    <div class="status-item">
-                        <span class="status-label">Storage</span>
-                        <span class="badge ${health.storage === 'connected' ? 'success' : 'warning'}">
-                            ${health.storage}
-                        </span>
-                    </div>
-                    <div class="status-item">
-                        <span class="status-label">Tables</span>
-                        <span class="badge ${health.tables === 'ready' ? 'success' : 'error'}">
-                            ${health.tables}
-                        </span>
-                    </div>
-                `;
-                
-                // Update stats
-                document.getElementById('authorCount').textContent = authors.length;
-                document.getElementById('playlistCount').textContent = playlists.length;
-                document.getElementById('stats').style.display = 'grid';
-                
+                const response = await fetch(`${API_URL}/api/authors/`);
+                allAuthors = await response.json();
+                renderAuthors(allAuthors);
             } catch (error) {
-                console.error('Error checking status:', error);
-                document.getElementById('status').innerHTML = `
-                    <div class="status-item">
-                        <span class="status-label">API Status</span>
-                        <span class="badge error">offline</span>
-                    </div>
-                    <div style="margin-top: 15px; color: #ef4444; font-size: 0.875rem;">
-                        Unable to connect to API. Please try again.
+                console.error('Error loading authors:', error);
+                document.getElementById('authorsContainer').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">😞</div>
+                        <h3 class="empty-title">Failed to load authors</h3>
+                        <p class="empty-subtitle">Please try refreshing the page</p>
                     </div>
                 `;
             }
         }
         
-        // Check status on load
-        checkStatus();
+        async function loadLatestEpisodes() {
+            try {
+                // Get all published episodes from all authors
+                // For now, we'll fetch from known authors
+                // TODO: Create a public endpoint for all published episodes
+                const episodes = [];
+                
+                for (const author of allAuthors.slice(0, 10)) { // Limit to first 10 authors
+                    try {
+                        const response = await fetch(`${API_URL}/api/narration/episodes/${author.user_id}`);
+                        const authorEpisodes = await response.json();
+                        
+                        // Only include published episodes
+                        const published = authorEpisodes
+                            .filter(ep => ep.is_published)
+                            .map(ep => ({
+                                ...ep,
+                                author_name: author.display_name,
+                                author_username: author.username
+                            }));
+                        
+                        episodes.push(...published);
+                    } catch (err) {
+                        // Skip if author has no episodes
+                    }
+                }
+                
+                // Sort by created_at desc, take latest 12
+                allEpisodes = episodes
+                    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                    .slice(0, 12);
+                
+                renderEpisodes(allEpisodes);
+                
+            } catch (error) {
+                console.error('Error loading episodes:', error);
+                document.getElementById('episodesContainer').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">😞</div>
+                        <h3 class="empty-title">Failed to load episodes</h3>
+                        <p class="empty-subtitle">Please try refreshing the page</p>
+                    </div>
+                `;
+            }
+        }
+        
+        function renderAuthors(authors) {
+            const container = document.getElementById('authorsContainer');
+            
+            if (authors.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🎙️</div>
+                        <h3 class="empty-title">No creators yet</h3>
+                        <p class="empty-subtitle">Be the first to join Vox Platform!</p>
+                        <br>
+                        <a href="signup.html" class="btn-primary">Sign Up as Creator</a>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.className = 'author-grid';
+            container.innerHTML = authors.map(author => {
+                const initials = author.display_name
+                    .split(' ')
+                    .map(n => n[0])
+                    .join('')
+                    .toUpperCase()
+                    .slice(0, 2);
+                
+                return `
+                    <a href="author/${author.username}" class="author-card">
+                        <div class="author-avatar">
+                            ${author.avatar_url ? `<img src="${author.avatar_url}" alt="${author.display_name}">` : initials}
+                        </div>
+                        <div class="author-name">${author.display_name}</div>
+                        <div class="author-username">@${author.username}</div>
+                        <div class="author-bio">${author.bio || 'No bio yet'}</div>
+                        <div class="author-stats">
+                            <div class="stat">
+                                <div class="stat-value">🎙️</div>
+                                <div class="stat-label">Creator</div>
+                            </div>
+                        </div>
+                    </a>
+                `;
+            }).join('');
+        }
+        
+        function renderEpisodes(episodes) {
+            const container = document.getElementById('episodesContainer');
+            
+            if (episodes.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🎧</div>
+                        <h3 class="empty-title">No episodes yet</h3>
+                        <p class="empty-subtitle">Check back soon for new content!</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.className = 'episode-grid';
+            container.innerHTML = episodes.map(episode => {
+                const date = new Date(episode.created_at).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                });
+                
+                return `
+                    <a href="author/${episode.author_username}" class="episode-card">
+                        <div class="episode-cover">
+                            ${episode.cover_square_url ? 
+                                `<img src="${episode.cover_square_url}" alt="${episode.episode_title}">` : 
+                                '🎙️'
+                            }
+                        </div>
+                        <div class="episode-info">
+                            <div class="episode-title">${episode.episode_title || 'Untitled Episode'}</div>
+                            <div class="episode-description">${episode.episode_description || 'No description'}</div>
+                            <div class="episode-author">by ${episode.author_name}</div>
+                            <div class="episode-meta">
+                                <span>${date}</span>
+                                <span>▶️ Listen</span>
+                            </div>
+                        </div>
+                    </a>
+                `;
+            }).join('');
+        }
+        
+        function handleSearch() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            
+            if (!searchTerm) {
+                renderAuthors(allAuthors);
+                renderEpisodes(allEpisodes);
+                return;
+            }
+            
+            // Filter authors
+            const filteredAuthors = allAuthors.filter(author => 
+                author.display_name.toLowerCase().includes(searchTerm) ||
+                author.username.toLowerCase().includes(searchTerm) ||
+                (author.bio && author.bio.toLowerCase().includes(searchTerm))
+            );
+            
+            // Filter episodes
+            const filteredEpisodes = allEpisodes.filter(episode =>
+                episode.episode_title.toLowerCase().includes(searchTerm) ||
+                (episode.episode_description && episode.episode_description.toLowerCase().includes(searchTerm)) ||
+                episode.author_name.toLowerCase().includes(searchTerm)
+            );
+            
+            renderAuthors(filteredAuthors);
+            renderEpisodes(filteredEpisodes);
+        }
     </script>
 </body>
 </html>
