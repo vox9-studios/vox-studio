@@ -30,7 +30,7 @@ app.add_middleware(
 app.include_router(narration_router)
 app.include_router(playlist_routes.router)
 app.include_router(authors_routes.router)
-app.include_router(comments.router)
+app.include_router(comments_routes.router)
 
 @app.get("/")
 async def root():
