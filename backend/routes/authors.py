@@ -239,3 +239,62 @@ async def upload_avatar(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
         
+@router.delete("/{author_id}/delete-account")
+async def delete_account(
+    author_id: str,
+    db: Session = Depends(get_db)
+):
+    """Delete entire account - profile, episodes, playlists, and all S3 files"""
+    author = db.query(AuthorProfile).filter(AuthorProfile.user_id == author_id).first()
+    
+    if not author:
+        raise HTTPException(status_code=404, detail="Author not found")
+    
+    try:
+        from s3_client import s3_client, BUCKET_NAME
+        
+        # Delete ALL S3 files for this author
+        prefixes = [
+            f"vox-platform/avatars/{author_id}/",
+            f"vox-platform/covers/{author_id}/",
+            f"vox-platform/uploads/{author_id}/",
+            f"vox-platform/captions/{author_id}/",
+            f"vox-platform/generations/{author_id}/"
+        ]
+        
+        for prefix in prefixes:
+            try:
+                # List all objects with this prefix
+                response = s3_client.list_objects_v2(Bucket=BUCKET_NAME, Prefix=prefix)
+                
+                if 'Contents' in response:
+                    # Delete all objects
+                    objects = [{'Key': obj['Key']} for obj in response['Contents']]
+                    if objects:
+                        s3_client.delete_objects(
+                            Bucket=BUCKET_NAME,
+                            Delete={'Objects': objects}
+                        )
+                        print(f"Deleted {len(objects)} files from {prefix}")
+            except Exception as e:
+                print(f"Error deleting S3 prefix {prefix}: {e}")
+        
+        # Delete all episodes
+        db.query(GenerationJob).filter(GenerationJob.author_id == author_id).delete()
+        
+        # Delete all playlists
+        from models import Playlist
+        db.query(Playlist).filter(Playlist.author_id == author_id).delete()
+        
+        # Delete author profile
+        db.delete(author)
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": "Account deleted successfully"
+        }
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to delete account: {str(e)}")
