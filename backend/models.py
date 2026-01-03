@@ -8,13 +8,22 @@ Base = declarative_base()
 
 class AuthorProfile(Base):
     __tablename__ = "author_profiles"
+
+    user_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    auth_user_id = Column(UUID(as_uuid=True), ForeignKey("auth.users.id"))  # NEW
+    username = Column(String(50), unique=True)  # NEW
+    display_name = Column(String(100))  # NEW
+    bio = Column(Text)  # NEW
+    avatar_url = Column(Text)  # NEW
+    website_url = Column(Text)  # NEW
     
-    user_id = Column(UUID(as_uuid=True), primary_key=True)
-    display_name = Column(String(255), nullable=False)
-    bio = Column(Text)
-    avatar_url = Column(Text)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # Existing fields:
+    email = Column(String(255), unique=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    credits_used = Column(Integer, default=0)
+    credits_limit = Column(Integer, default=50000)
+    last_credit_reset = Column(Date)
     
     # Credit tracking columns
     credits_used = Column(Integer, default=0)
