@@ -19,7 +19,6 @@ class AuthorProfile(Base):
     website_url = Column(Text)  # NEW
     
     # Existing fields:
-    email = Column(String(255), unique=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     credits_used = Column(Integer, default=0)
