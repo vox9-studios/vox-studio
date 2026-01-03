@@ -66,7 +66,6 @@ async def create_author_profile(
         auth_user_id=request.auth_user_id,
         username=request.username,
         display_name=request.display_name,
-        email=request.email,
         credits_used=0,
         credits_limit=50000  # 50k free credits per month
     )
