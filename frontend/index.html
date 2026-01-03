@@ -620,7 +620,7 @@
                     .slice(0, 2);
                 
                 return `
-                    <a href="author/${author.username}" class="author-card">
+                    <a href="author.html?u=${author.username}" class="author-card">
                         <div class="author-avatar">
                             ${author.avatar_url ? `<img src="${author.avatar_url}" alt="${author.display_name}">` : initials}
                         </div>
@@ -661,7 +661,7 @@
                 });
                 
                 return `
-                    <a href="author/${episode.author_username}" class="episode-card">
+                    <a href="author.html?u=${episode.author_username}" class="episode-card">
                         <div class="episode-cover">
                             ${episode.cover_square_url ? 
                                 `<img src="${episode.cover_square_url}" alt="${episode.episode_title}">` : 
