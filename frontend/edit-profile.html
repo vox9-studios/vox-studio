@@ -373,6 +373,28 @@
                     <p class="form-hint">Link to your personal website or social media</p>
                 </div>
             </div>
+
+            <!-- Delete Account Section -->
+            <div style="margin-top: 48px; padding-top: 32px; border-top: 2px solid #f44336;">
+                <h3 style="color: #f44336; margin-bottom: 16px; font-size: 1.3rem;">⚠️ Danger Zone</h3>
+                <p style="color: #aaa; margin-bottom: 16px; line-height: 1.6;">
+                    Permanently delete your account and all associated data. This action cannot be undone and will delete:
+                </p>
+                <ul style="color: #aaa; margin-bottom: 20px; margin-left: 20px; line-height: 1.8;">
+                    <li>Your profile and avatar</li>
+                    <li>All episodes and audio files</li>
+                    <li>All playlists</li>
+                    <li>All S3 storage data</li>
+                </ul>
+                <button 
+                    onclick="confirmDeleteAccount()" 
+                    style="padding: 12px 24px; background: transparent; border: 2px solid #f44336; color: #f44336; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: 600; transition: all 0.2s;"
+                    onmouseover="this.style.background='#f44336'; this.style.color='#fff'"
+                    onmouseout="this.style.background='transparent'; this.style.color='#f44336'"
+                >
+                    🗑️ Delete My Account
+                </button>
+            </div>
             
             <!-- Save Button -->
             <div class="save-section">
@@ -423,7 +445,68 @@
                 window.location.href = 'login.html';
             }
         }
+
+        async function confirmDeleteAccount() {
+            // First confirmation
+            const confirm1 = confirm(
+                '⚠️ WARNING: This will permanently delete your account!\n\n' +
+                'This action will delete:\n' +
+                '• Your profile and avatar\n' +
+                '• All episodes and audio files\n' +
+                '• All playlists\n' +
+                '• All S3 storage data\n\n' +
+                'Are you absolutely sure?'
+            );
+            
+            if (!confirm1) return;
+            
+            // Second confirmation
+            const confirm2 = prompt(
+                'Type "DELETE MY ACCOUNT" (all caps) to confirm:'
+            );
+            
+            if (confirm2 !== 'DELETE MY ACCOUNT') {
+                alert('Account deletion cancelled.');
+                return;
+            }
+            
+            // Final confirmation
+            const confirm3 = confirm(
+                'This is your FINAL warning.\n\n' +
+                'Your account and ALL data will be permanently deleted.\n\n' +
+                'Continue with deletion?'
+            );
+            
+            if (!confirm3) return;
+            
+            // Proceed with deletion
+            await deleteAccount();
+        }
         
+        async function deleteAccount() {
+            try {
+                const response = await fetch(`${API_URL}/api/authors/${AUTHOR_ID}/delete-account`, {
+                    method: 'DELETE'
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to delete account');
+                }
+                
+                // Sign out from Supabase
+                await supabaseClient.auth.signOut();
+                
+                // Show success message
+                alert('✅ Your account has been permanently deleted.\n\nYou will now be redirected to the homepage.');
+                
+                // Redirect to homepage
+                window.location.href = 'index.html';
+                
+            } catch (error) {
+                console.error('Delete account error:', error);
+                alert('Failed to delete account. Please try again or contact support.');
+            }
+        }
         function loadProfile() {
             // Hide loading, show form
             document.getElementById('loadingState').style.display = 'none';
