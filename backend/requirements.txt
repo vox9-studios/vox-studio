@@ -12,3 +12,4 @@ tenacity==8.2.3
 aiofiles==24.1.0
 mutagen==1.47.0
 pydub==0.25.1
+supabase==2.10.0
