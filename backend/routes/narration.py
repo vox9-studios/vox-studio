@@ -577,3 +577,95 @@ async def create_uploaded_episode(
         "job_id": str(job.id),
         "message": "Episode created successfully"
     }
+
+@router.patch("/episodes/{episode_id}")
+async def update_episode(
+    episode_id: str,
+    request: dict,
+    db: Session = Depends(get_db)
+):
+    """Update episode metadata"""
+    episode = db.query(GenerationJob).filter(GenerationJob.id == episode_id).first()
+    
+    if not episode:
+        raise HTTPException(status_code=404, detail="Episode not found")
+    
+    # Update fields if provided
+    if 'episode_title' in request:
+        episode.episode_title = request['episode_title']
+    
+    if 'episode_description' in request:
+        episode.episode_description = request['episode_description']
+    
+    if 'playlist_id' in request:
+        # Allow null to remove from playlist
+        episode.playlist_id = request['playlist_id'] if request['playlist_id'] else None
+    
+    if 'is_published' in request:
+        episode.is_published = request['is_published']
+    
+    db.commit()
+    db.refresh(episode)
+    
+    return {
+        "success": True,
+        "message": "Episode updated successfully",
+        "episode": {
+            "id": str(episode.id),
+            "episode_title": episode.episode_title,
+            "episode_description": episode.episode_description,
+            "playlist_id": str(episode.playlist_id) if episode.playlist_id else None,
+            "is_published": episode.is_published
+        }
+    }
+
+
+@router.delete("/episodes/{episode_id}")
+async def delete_episode(
+    episode_id: str,
+    db: Session = Depends(get_db)
+):
+    """Delete episode and its S3 files"""
+    episode = db.query(GenerationJob).filter(GenerationJob.id == episode_id).first()
+    
+    if not episode:
+        raise HTTPException(status_code=404, detail="Episode not found")
+    
+    try:
+        # Delete S3 files
+        from s3_client import s3_client, BUCKET_NAME
+        
+        # Extract S3 keys from URLs
+        if episode.audio_url:
+            audio_key = episode.audio_url.split('.amazonaws.com/')[-1]
+            try:
+                s3_client.delete_object(Bucket=BUCKET_NAME, Key=audio_key)
+            except Exception as e:
+                print(f"Failed to delete audio: {e}")
+        
+        if episode.vtt_url:
+            vtt_key = episode.vtt_url.split('.amazonaws.com/')[-1]
+            try:
+                s3_client.delete_object(Bucket=BUCKET_NAME, Key=vtt_key)
+            except Exception as e:
+                print(f"Failed to delete VTT: {e}")
+        
+        if episode.cover_square_url:
+            cover_key = episode.cover_square_url.split('.amazonaws.com/')[-1]
+            try:
+                s3_client.delete_object(Bucket=BUCKET_NAME, Key=cover_key)
+            except Exception as e:
+                print(f"Failed to delete cover: {e}")
+        
+        # Delete from database
+        db.delete(episode)
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": "Episode deleted successfully"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete episode: {str(e)}")
+        
