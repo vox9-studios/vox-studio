@@ -2,12 +2,14 @@
 """
 Author management routes
 """
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
+from datetime import datetime
 import uuid
-
+import os
+from s3_client import s3_client, BUCKET_NAME
 from database import get_db
 from models import AuthorProfile
 from auth import get_current_user
@@ -143,3 +145,97 @@ async def list_all_authors(db: Session = Depends(get_db)):
         }
         for author in authors
     ]
+
+@router.patch("/{author_id}")
+async def update_author_profile(
+    author_id: str,
+    request: dict,
+    db: Session = Depends(get_db)
+):
+    """Update author profile (display name, bio, website)"""
+    author = db.query(AuthorProfile).filter(AuthorProfile.user_id == author_id).first()
+    
+    if not author:
+        raise HTTPException(status_code=404, detail="Author not found")
+    
+    # Update fields if provided
+    if 'display_name' in request:
+        author.display_name = request['display_name']
+    
+    if 'bio' in request:
+        author.bio = request['bio']
+    
+    if 'website_url' in request:
+        author.website_url = request['website_url']
+    
+    if 'avatar_url' in request:
+        author.avatar_url = request['avatar_url']
+    
+    author.updated_at = datetime.utcnow()
+    
+    db.commit()
+    db.refresh(author)
+    
+    return {
+        "success": True,
+        "message": "Profile updated successfully",
+        "author": {
+            "display_name": author.display_name,
+            "bio": author.bio,
+            "website_url": author.website_url,
+            "avatar_url": author.avatar_url
+        }
+    }
+
+@router.post("/upload-avatar/{author_id}")
+async def upload_avatar(
+    author_id: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    """Upload author avatar image"""
+    
+    # Validate author
+    author = db.query(AuthorProfile).filter(AuthorProfile.user_id == author_id).first()
+    if not author:
+        raise HTTPException(status_code=404, detail="Author not found")
+    
+    # Validate file type
+    if not file.content_type.startswith('image/'):
+        raise HTTPException(status_code=400, detail="Only image files are supported")
+    
+    # Validate file size (max 5MB)
+    contents = await file.read()
+    if len(contents) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Image must be under 5MB")
+    
+    try:
+        # Generate unique filename
+        file_id = str(uuid.uuid4())
+        extension = file.filename.split('.')[-1] if '.' in file.filename else 'jpg'
+        s3_key = f"vox-platform/avatars/{author_id}/{file_id}.{extension}"
+        
+        # Upload to S3
+        s3_client.put_object(
+            Bucket=BUCKET_NAME,
+            Key=s3_key,
+            Body=contents,
+            ContentType=file.content_type
+        )
+        
+        # Get public URL
+        avatar_url = f"https://{BUCKET_NAME}.s3.{os.getenv('AWS_REGION', 'eu-west-2')}.amazonaws.com/{s3_key}"
+        
+        # Update author profile with new avatar
+        author.avatar_url = avatar_url
+        author.updated_at = datetime.utcnow()
+        db.commit()
+        
+        return {
+            "success": True,
+            "avatar_url": avatar_url
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+        
