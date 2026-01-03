@@ -14,7 +14,7 @@ from io import BytesIO
 
 from database import get_db
 from models import AuthorProfile, GenerationJob
-from s3_client import upload_to_s3, s3_client, S3_BUCKET_NAME
+from s3_client import upload_to_s3, s3_client, BUCKET_NAME
 from elevenlabs_client import generate_audio_bytes, get_available_voices, test_api_key
 from captions import split_into_sentences, create_vtt_from_real_durations, SentencePiece
 
@@ -461,14 +461,14 @@ async def upload_audio_file(
         
         # Upload to S3
         s3_client.put_object(
-            Bucket=S3_BUCKET_NAME,
+            Bucket=BUCKET_NAME,
             Key=s3_key,
             Body=contents,
             ContentType='audio/mpeg'
         )
         
         # Get public URL
-        audio_url = f"https://{S3_BUCKET_NAME}.s3.{os.getenv('AWS_REGION', 'eu-west-2')}.amazonaws.com/{s3_key}"
+        audio_url = f"https://{BUCKET_NAME}.s3.{os.getenv('AWS_REGION', 'eu-west-2')}.amazonaws.com/{s3_key}"
         
         return {
             "success": True,
@@ -507,14 +507,14 @@ async def upload_vtt_file(
         
         # Upload to S3
         s3_client.put_object(
-            Bucket=S3_BUCKET_NAME,
+            Bucket=BUCKET_NAME,
             Key=s3_key,
             Body=contents,
             ContentType='text/vtt'
         )
         
         # Get public URL
-        vtt_url = f"https://{S3_BUCKET_NAME}.s3.{os.getenv('AWS_REGION', 'eu-west-2')}.amazonaws.com/{s3_key}"
+        vtt_url = f"https://{BUCKET_NAME}.s3.{os.getenv('AWS_REGION', 'eu-west-2')}.amazonaws.com/{s3_key}"
         
         return {
             "success": True,
