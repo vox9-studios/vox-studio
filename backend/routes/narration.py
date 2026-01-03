@@ -603,7 +603,10 @@ async def update_episode(
     
     if 'is_published' in request:
         episode.is_published = request['is_published']
-    
+        
+    if 'cover_square_url' in request:
+        episode.cover_square_url = request['cover_square_url']
+        
     db.commit()
     db.refresh(episode)
     
