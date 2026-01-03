@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Author Profile - Vox 9 Studios</title>
+    <link rel="icon" type="image/x-icon" href="../favicon.ico">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0f0f0f;
+            color: #f1f1f1;
+            min-height: 100vh;
+        }
+        
+        /* Navigation */
+        .nav {
+            background: #212121;
+            border-bottom: 1px solid #3d3d3d;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+        }
+        
+        .logo img {
+            height: 40px;
+            width: auto;
+        }
+        
+        .nav-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        
+        .btn-secondary {
+            padding: 10px 20px;
+            background: transparent;
+            border: 1px solid #3d3d3d;
+            color: #f1f1f1;
+            border-radius: 20px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-secondary:hover {
+            border-color: #3ea6ff;
+            color: #3ea6ff;
+        }
+        
+        .btn-primary {
+            padding: 10px 24px;
+            background: #3ea6ff;
+            border: none;
+            color: #fff;
+            border-radius: 20px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-primary:hover {
+            background: #1c8fff;
+        }
+        
+        /* Author Header */
+        .author-header {
+            background: linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%);
+            border-bottom: 1px solid #3d3d3d;
+            padding: 60px 24px 40px;
+        }
+        
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            gap: 40px;
+            align-items: flex-start;
+        }
+        
+        .author-avatar-large {
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3ea6ff 0%, #0066cc 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+            color: #fff;
+            flex-shrink: 0;
+        }
+        
+        .author-avatar-large img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        
+        .author-info {
+            flex: 1;
+        }
+        
+        .author-name {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+        
+        .author-username {
+            font-size: 1.1rem;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        
+        .author-bio {
+            font-size: 1.05rem;
+            color: #aaa;
+            line-height: 1.6;
+            margin-bottom: 24px;
+            max-width: 700px;
+        }
+        
+        .author-meta {
+            display: flex;
+            gap: 32px;
+            margin-bottom: 24px;
+        }
+        
+        .meta-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .meta-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #3ea6ff;
+        }
+        
+        .meta-label {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .subscribe-btn {
+            padding: 14px 32px;
+            background: #3ea6ff;
+            border: none;
+            color: #fff;
+            border-radius: 24px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .subscribe-btn:hover {
+            background: #1c8fff;
+            transform: scale(1.05);
+        }
+        
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+        
+        .section-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 24px;
+        }
+        
+        /* Playlists */
+        .playlist-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 24px;
+            margin-bottom: 60px;
+        }
+        
+        .playlist-card {
+            background: #212121;
+            border: 1px solid #3d3d3d;
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .playlist-card:hover {
+            transform: translateY(-4px);
+            border-color: #3ea6ff;
+            box-shadow: 0 8px 24px rgba(62, 166, 255, 0.2);
+        }
+        
+        .playlist-cover {
+            width: 100%;
+            height: 160px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            color: #fff;
+            font-weight: 700;
+        }
+        
+        .playlist-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+        
+        .playlist-description {
+            font-size: 0.9rem;
+            color: #aaa;
+            line-height: 1.5;
+            margin-bottom: 12px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .playlist-meta {
+            font-size: 0.85rem;
+            color: #666;
+        }
+        
+        /* Episodes */
+        .episode-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        
+        .episode-item {
+            background: #212121;
+            border: 1px solid #3d3d3d;
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .episode-item:hover {
+            border-color: #3ea6ff;
+            background: #1a1a1a;
+        }
+        
+        .episode-cover-small {
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #3d3d3d 0%, #1a1a1a 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: #666;
+            flex-shrink: 0;
+        }
+        
+        .episode-cover-small img {
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+            object-fit: cover;
+        }
+        
+        .episode-details {
+            flex: 1;
+        }
+        
+        .episode-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 6px;
+        }
+        
+        .episode-description {
+            font-size: 0.9rem;
+            color: #aaa;
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .episode-date {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 8px;
+        }
+        
+        .play-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #3ea6ff;
+            border: none;
+            color: #fff;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        .play-btn:hover {
+            background: #1c8fff;
+            transform: scale(1.1);
+        }
+        
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+        
+        .empty-icon {
+            font-size: 4rem;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+        
+        .empty-title {
+            font-size: 1.3rem;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+        
+        .empty-subtitle {
+            font-size: 0.95rem;
+            color: #666;
+        }
+        
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #3d3d3d;
+            border-top-color: #3ea6ff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+            }
+            
+            .author-name {
+                font-size: 2rem;
+            }
+            
+            .author-meta {
+                justify-content: center;
+            }
+            
+            .episode-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .play-btn {
+                align-self: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav">
+        <a href="/" class="logo">
+            <img src="../vox9-logo2.png" alt="Vox 9 Studios">
+        </a>
+        <div class="nav-actions">
+            <a href="/" class="btn-secondary">← Browse</a>
+            <a href="../signup.html" class="btn-primary">For Creators</a>
+        </div>
+    </nav>
+    
+    <!-- Author Header -->
+    <div class="author-header">
+        <div class="header-content" id="authorHeader">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Loading author...</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Playlists Section -->
+    <div class="container">
+        <h2 class="section-title">Playlists</h2>
+        <div id="playlistsContainer" class="loading">
+            <div class="spinner"></div>
+            <p>Loading playlists...</p>
+        </div>
+    </div>
+    
+    <!-- Episodes Section -->
+    <div class="container">
+        <h2 class="section-title">Latest Episodes</h2>
+        <div id="episodesContainer" class="loading">
+            <div class="spinner"></div>
+            <p>Loading episodes...</p>
+        </div>
+    </div>
+    
+    <script>
+        const API_URL = 'https://vox-platform-api.onrender.com';
+        
+        // Get username from URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const username = urlParams.get('u');
+        
+        if (!username) {
+            document.getElementById('authorHeader').innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">😞</div>
+                    <h3 class="empty-title">No Author Specified</h3>
+                    <p class="empty-subtitle">Please provide an author username.</p>
+                    <br>
+                    <a href="/" class="btn-primary">← Back to Home</a>
+                </div>
+            `;
+            throw new Error('No username provided');
+        }
+        
+        let authorData = null;
+        
+        // Load author data
+        loadAuthor();
+        
+        async function loadAuthor() {
+            try {
+                const response = await fetch(`${API_URL}/api/authors/${username}`);
+                
+                if (!response.ok) {
+                    throw new Error('Author not found');
+                }
+                
+                authorData = await response.json();
+                renderAuthorHeader();
+                loadPlaylists();
+                loadEpisodes();
+                
+            } catch (error) {
+                console.error('Error loading author:', error);
+                document.getElementById('authorHeader').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">😞</div>
+                        <h3 class="empty-title">Author Not Found</h3>
+                        <p class="empty-subtitle">This author doesn't exist or has been removed.</p>
+                        <br>
+                        <a href="/" class="btn-primary">← Back to Home</a>
+                    </div>
+                `;
+            }
+        }
+        
+        function renderAuthorHeader() {
+            const initials = authorData.display_name
+                .split(' ')
+                .map(n => n[0])
+                .join('')
+                .toUpperCase()
+                .slice(0, 2);
+            
+            document.getElementById('authorHeader').innerHTML = `
+                <div class="author-avatar-large">
+                    ${authorData.avatar_url ? 
+                        `<img src="${authorData.avatar_url}" alt="${authorData.display_name}">` : 
+                        initials
+                    }
+                </div>
+                <div class="author-info">
+                    <h1 class="author-name">${authorData.display_name}</h1>
+                    <div class="author-username">@${authorData.username}</div>
+                    <p class="author-bio">${authorData.bio || 'No bio yet'}</p>
+                    
+                    <div class="author-meta">
+                        <div class="meta-item">
+                            <span class="meta-value" id="episodeCount">0</span>
+                            <span class="meta-label">Episodes</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-value" id="playlistCount">0</span>
+                            <span class="meta-label">Playlists</span>
+                        </div>
+                    </div>
+                    
+                    <button class="subscribe-btn" onclick="showSubscribeModal()">
+                        <span>💳</span>
+                        <span>Subscribe for $2.50/month</span>
+                    </button>
+                </div>
+            `;
+            
+            // Update page title
+            document.title = `${authorData.display_name} - Vox 9 Studios`;
+        }
+        
+        async function loadPlaylists() {
+            try {
+                const response = await fetch(`${API_URL}/api/playlists/${authorData.user_id}`);
+                const playlists = await response.json();
+                
+                // Filter published playlists only
+                const published = playlists.filter(p => p.is_published);
+                
+                document.getElementById('playlistCount').textContent = published.length;
+                
+                if (published.length === 0) {
+                    document.getElementById('playlistsContainer').innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">📚</div>
+                            <h3 class="empty-title">No playlists yet</h3>
+                            <p class="empty-subtitle">This author hasn't created any playlists yet.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                document.getElementById('playlistsContainer').className = 'playlist-grid';
+                document.getElementById('playlistsContainer').innerHTML = published.map(playlist => {
+                    const coverStyle = generateGradient(playlist.title);
+                    const firstLetter = playlist.title.charAt(0).toUpperCase();
+                    
+                    return `
+                        <div class="playlist-card" onclick="alert('Playlist view coming soon!')">
+                            <div class="playlist-cover" style="${coverStyle}">
+                                ${firstLetter}
+                            </div>
+                            <div class="playlist-title">${playlist.title}</div>
+                            <div class="playlist-description">${playlist.description || 'No description'}</div>
+                            <div class="playlist-meta">${playlist.episode_count || 0} episodes</div>
+                        </div>
+                    `;
+                }).join('');
+                
+            } catch (error) {
+                console.error('Error loading playlists:', error);
+                document.getElementById('playlistsContainer').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">😞</div>
+                        <h3 class="empty-title">Failed to load playlists</h3>
+                    </div>
+                `;
+            }
+        }
+        
+        async function loadEpisodes() {
+            try {
+                const response = await fetch(`${API_URL}/api/narration/episodes/${authorData.user_id}`);
+                const episodes = await response.json();
+                
+                // Filter published episodes only
+                const published = episodes.filter(ep => ep.is_published);
+                
+                document.getElementById('episodeCount').textContent = published.length;
+                
+                if (published.length === 0) {
+                    document.getElementById('episodesContainer').innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">🎙️</div>
+                            <h3 class="empty-title">No episodes yet</h3>
+                            <p class="empty-subtitle">This author hasn't published any episodes yet.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                document.getElementById('episodesContainer').className = 'episode-list';
+                document.getElementById('episodesContainer').innerHTML = published.map(episode => {
+                    const date = new Date(episode.created_at).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                    });
+                    
+                    return `
+                        <div class="episode-item">
+                            <div class="episode-cover-small">
+                                ${episode.cover_square_url ? 
+                                    `<img src="${episode.cover_square_url}" alt="${episode.episode_title}">` : 
+                                    '🎙️'
+                                }
+                            </div>
+                            <div class="episode-details">
+                                <div class="episode-title">${episode.episode_title || 'Untitled Episode'}</div>
+                                <div class="episode-description">${episode.episode_description || 'No description'}</div>
+                                <div class="episode-date">${date}</div>
+                            </div>
+                            <button class="play-btn" onclick="playEpisode('${episode.audio_url}', '${episode.episode_title}')">
+                                ▶️
+                            </button>
+                        </div>
+                    `;
+                }).join('');
+                
+            } catch (error) {
+                console.error('Error loading episodes:', error);
+                document.getElementById('episodesContainer').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">😞</div>
+                        <h3 class="empty-title">Failed to load episodes</h3>
+                    </div>
+                `;
+            }
+        }
+        
+        function generateGradient(text) {
+            // Generate consistent color from text hash
+            let hash = 0;
+            for (let i = 0; i < text.length; i++) {
+                hash = text.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            
+            const hue = Math.abs(hash % 360);
+            const sat = 60 + (Math.abs(hash) % 20);
+            const light = 45 + (Math.abs(hash >> 8) % 15);
+            
+            const color1 = `hsl(${hue}, ${sat}%, ${light}%)`;
+            const color2 = `hsl(${hue}, ${sat}%, ${Math.max(light - 15, 20)}%)`;
+            
+            return `background: linear-gradient(135deg, ${color1} 0%, ${color2} 100%);`;
+        }
+        
+        function playEpisode(audioUrl, title) {
+            // TODO: Open audio player modal with captions
+            alert(`Playing: ${title}\n\nAudio player with captions coming soon!\n\nFor now, audio is at:\n${audioUrl}`);
+        }
+        
+        function showSubscribeModal() {
+            alert('💳 Subscribe for $2.50/month\n\nSupport ' + authorData.display_name + ' and get access to all their content!\n\nStripe checkout coming soon!');
+        }
+    </script>
+</body>
+</html>
