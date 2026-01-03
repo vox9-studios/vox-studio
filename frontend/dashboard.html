@@ -798,6 +798,14 @@
                 }
                 playlistSelect.appendChild(option);
             });
+            // Show existing cover if it exists
+            editCoverUrl = episode.cover_square_url || null;
+            if (editCoverUrl) {
+                document.getElementById('editCoverPreviewImg').src = editCoverUrl;
+                document.getElementById('editCoverPreview').style.display = 'block';
+            } else {
+                document.getElementById('editCoverPreview').style.display = 'none';
+            }
             
             // Show modal
             document.getElementById('editEpisodeModal').style.display = 'flex';
@@ -824,7 +832,8 @@
                         episode_title: title,
                         episode_description: description,
                         playlist_id: playlistId || null,
-                        is_published: isPublished
+                        is_published: isPublished,
+                        cover_square_url: editCoverUrl
                     })
                 });
                 
@@ -855,8 +864,16 @@
                 
                 if (!response.ok) throw new Error('Failed to delete episode');
                 
+                // Remove from local array immediately (instant UI update)
+                allEpisodes = allEpisodes.filter(e => e.id !== episodeId);
+                renderEpisodes();
+                updateCounts();
+                
+                // Also reload from server to ensure sync
+                loadEpisodes();
+                loadPlaylists();
+                
                 alert('✅ Episode deleted successfully!');
-                loadEpisodes(); // Reload episodes
                 
             } catch (error) {
                 console.error('Delete error:', error);
@@ -1109,6 +1126,50 @@
                 skipTime(10);
             }
         });
+        let editCoverUrl = null;
+
+        async function handleEditCoverUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            if (!file.type.match(/image\/(jpeg|jpg|png)/)) {
+                alert('Please select a JPG or PNG image');
+                return;
+            }
+            
+            if (file.size > 5 * 1024 * 1024) {
+                alert('Image must be under 5MB');
+                return;
+            }
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const response = await fetch(`${API_URL}/api/narration/upload-cover/${AUTHOR_ID}?format_type=square`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) throw new Error('Upload failed');
+                
+                const result = await response.json();
+                editCoverUrl = result.url;
+                
+                // Show preview
+                document.getElementById('editCoverPreviewImg').src = result.url;
+                document.getElementById('editCoverPreview').style.display = 'block';
+                
+            } catch (error) {
+                alert('Upload failed: ' + error.message);
+            }
+        }
+        
+        function removeEditCover() {
+            editCoverUrl = null;
+            document.getElementById('editCoverPreview').style.display = 'none';
+            document.getElementById('editEpisodeCoverInput').value = '';
+        }
     </script>
     <!-- Audio Player Modal -->
     <div id="audioPlayerModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); z-index: 9999; align-items: center; justify-content: center;">
@@ -1198,7 +1259,39 @@
                     <option value="">Standalone Episode</option>
                 </select>
             </div>
-            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #aaa;">Cover Image</label>
+                <div style="background: #0f0f0f; padding: 20px; border-radius: 8px; border: 1px solid #3d3d3d;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                        <div>
+                            <div style="font-weight: 500; color: #fff; margin-bottom: 4px;">
+                                📱 Episode Cover
+                            </div>
+                            <div style="font-size: 0.85rem; color: #666;">
+                                1400x1400px recommended
+                            </div>
+                        </div>
+                        <input 
+                            type="file" 
+                            id="editEpisodeCoverInput"
+                            accept="image/jpeg,image/jpg,image/png"
+                            style="display: none;"
+                            onchange="handleEditCoverUpload(event)"
+                        />
+                        <button 
+                            onclick="document.getElementById('editEpisodeCoverInput').click()"
+                            style="padding: 8px 16px; background: #3ea6ff; border: none; color: #fff; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">
+                            Upload New
+                        </button>
+                    </div>
+                    <div id="editCoverPreview" style="display: none; margin-top: 12px;">
+                        <img id="editCoverPreviewImg" style="width: 150px; height: 150px; object-fit: cover; border-radius: 8px; border: 2px solid #3ea6ff;" />
+                        <button onclick="removeEditCover()" style="display: block; margin-top: 8px; padding: 6px 12px; background: transparent; border: 1px solid #f44336; color: #f44336; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
+                            Remove
+                        </button>
+                    </div>
+                </div>
+            </div>            
             <div style="margin-bottom: 24px;">
                 <label style="display: flex; align-items: center; cursor: pointer; color: #aaa;">
                     <input type="checkbox" id="editEpisodePublished" style="margin-right: 8px; width: 18px; height: 18px;">
