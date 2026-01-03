@@ -14,7 +14,7 @@ from io import BytesIO
 
 from database import get_db
 from models import AuthorProfile, GenerationJob
-from s3_client import upload_to_s3
+from s3_client import upload_to_s3, s3_client, S3_BUCKET_NAME
 from elevenlabs_client import generate_audio_bytes, get_available_voices, test_api_key
 from captions import split_into_sentences, create_vtt_from_real_durations, SentencePiece
 
