@@ -1715,6 +1715,7 @@ async function publishEpisode() {
         // Upload state
         let uploadedAudioUrl = null;
         let uploadedVttUrl = null;
+        let uploadedCoverUrl = null;
 
         // Drag handlers
         function handleDragOver(e) {
@@ -1846,6 +1847,71 @@ async function publishEpisode() {
             }
         }
 
+        async function handleUploadCoverImage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            if (!file.type.match(/image\/(jpeg|jpg|png)/)) {
+                alert('Please select a JPG or PNG image');
+                return;
+            }
+            
+            if (file.size > 5 * 1024 * 1024) {
+                alert('Image must be under 5MB');
+                return;
+            }
+            
+            const progressDiv = document.getElementById('uploadCoverProgress');
+            const progressBar = document.getElementById('uploadCoverProgressBar');
+            progressDiv.style.display = 'block';
+            progressBar.style.width = '30%';
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const response = await fetch(`${API_URL}/api/narration/upload-cover/${AUTHOR_ID}?format_type=square`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                progressBar.style.width = '70%';
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Upload failed');
+                }
+                
+                const result = await response.json();
+                uploadedCoverUrl = result.url;
+                
+                progressBar.style.width = '100%';
+                
+                setTimeout(() => {
+                    progressDiv.style.display = 'none';
+                    showUploadCoverPreview(result.url);
+                }, 500);
+                
+            } catch (error) {
+                alert('Upload failed: ' + error.message);
+                progressDiv.style.display = 'none';
+                progressBar.style.width = '0%';
+            }
+        }
+        
+        function showUploadCoverPreview(url) {
+            const preview = document.getElementById('uploadCoverPreview');
+            const img = document.getElementById('uploadCoverPreviewImg');
+            img.src = url;
+            preview.style.display = 'block';
+        }
+        
+        function removeUploadCover() {
+            uploadedCoverUrl = null;
+            document.getElementById('uploadCoverPreview').style.display = 'none';
+            document.getElementById('uploadCoverInput').value = '';
+        }
+        
         async function publishUploadedEpisode() {
             const title = document.getElementById('uploadEpisodeTitle').value;
             const description = document.getElementById('uploadEpisodeDescription').value;
@@ -1865,6 +1931,7 @@ async function publishEpisode() {
                         episode_description: description,
                         audio_url: uploadedAudioUrl,
                         vtt_url: uploadedVttUrl,
+                        cover_square_url: uploadedCoverUrl,
                         playlist_id: playlistId || null,
                         is_published: true
                     })
@@ -2056,6 +2123,52 @@ async function publishEpisode() {
                         </select>
                     </div>
                 </div>
+                
+                <!-- Step 4: Cover Image (NEW) -->
+                <div style="margin-bottom: 32px;">
+                    <h3 style="font-size: 1.2rem; margin-bottom: 16px;">4. Cover Image (Optional)</h3>
+                    
+                    <div style="background: #0f0f0f; padding: 20px; border-radius: 8px; border: 1px solid #3d3d3d;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                            <div>
+                                <div style="font-weight: 500; color: #fff; margin-bottom: 4px;">
+                                    📱 Square Cover (1:1)
+                                </div>
+                                <div style="font-size: 0.85rem; color: #666;">
+                                    1400x1400px recommended
+                                </div>
+                            </div>
+                            <input 
+                                type="file" 
+                                id="uploadCoverInput"
+                                accept="image/jpeg,image/jpg,image/png"
+                                style="display: none;"
+                                onchange="handleUploadCoverImage(event)"
+                            />
+                            <button 
+                                class="btn-secondary" 
+                                onclick="document.getElementById('uploadCoverInput').click()"
+                                style="padding: 8px 16px; font-size: 0.85rem;">
+                                Choose File
+                            </button>
+                        </div>
+                        <div id="uploadCoverPreview" style="display: none; margin-top: 12px;">
+                            <img id="uploadCoverPreviewImg" style="width: 150px; height: 150px; object-fit: cover; border-radius: 8px; border: 2px solid #3ea6ff;" />
+                            <button onclick="removeUploadCover()" style="display: block; margin-top: 8px; padding: 6px 12px; background: transparent; border: 1px solid #f44336; color: #f44336; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
+                                Remove
+                            </button>
+                        </div>
+                        <div id="uploadCoverProgress" style="display: none; margin-top: 12px;">
+                            <div style="width: 100%; height: 4px; background: #3d3d3d; border-radius: 2px; overflow: hidden;">
+                                <div style="height: 100%; background: #3ea6ff; width: 0%; transition: width 0.3s;" id="uploadCoverProgressBar"></div>
+                            </div>
+                            <div style="font-size: 0.85rem; color: #aaa; margin-top: 4px;">Uploading...</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Publish Button -->
+                <div style="text-align: center; padding-top: 24px; border-top: 1px solid #3d3d3d;">
                 
                 <!-- Publish Button -->
                 <div style="text-align: center; padding-top: 24px; border-top: 1px solid #3d3d3d;">
