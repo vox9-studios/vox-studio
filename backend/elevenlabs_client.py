@@ -80,7 +80,7 @@ def generate_audio_bytes(
     similarity_boost: float = 0.75,
     style: float = 0.0,
     use_speaker_boost: bool = True,
-    speaking_rate: float = 1.0
+    speaking_rate: float = 1.1
 ) -> Optional[bytes]:
     """
     Generate audio from text using ElevenLabs
