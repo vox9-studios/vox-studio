@@ -405,3 +405,28 @@ async def get_author_episodes(
         })
     
     return episodes
+
+@router.patch("/publish/{job_id}")
+async def publish_episode(
+    job_id: str,
+    db: Session = Depends(get_db)
+):
+    """Publish an episode (set is_published to true)"""
+    job = db.query(GenerationJob).filter(GenerationJob.id == job_id).first()
+    
+    if not job:
+        raise HTTPException(status_code=404, detail="Episode not found")
+    
+    if job.status != "completed":
+        raise HTTPException(status_code=400, detail="Can only publish completed episodes")
+    
+    # Update is_published
+    job.is_published = True
+    db.commit()
+    
+    return {
+        "success": True,
+        "message": "Episode published successfully",
+        "episode_id": str(job.id),
+        "is_published": True
+    }
