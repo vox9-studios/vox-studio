@@ -649,7 +649,7 @@
                                 <div class="episode-description">${episode.episode_description || 'No description'}</div>
                                 <div class="episode-date">${date}</div>
                             </div>
-                            <button class="play-btn" onclick="playEpisode('${episode.audio_url}', '${episode.vtt_url}', '${episode.episode_title}', '${episode.episode_description}', '${episode.cover_square_url}')">
+                            <button class="play-btn" onclick="playEpisode('${episode.audio_url}', ${episode.vtt_url ? `'${episode.vtt_url}'` : 'null'}, '${episode.episode_title}', '${episode.episode_description}', ${episode.cover_square_url ? `'${episode.cover_square_url}'` : 'null'})">
                                 ▶️
                             </button>
                         </div>
@@ -846,10 +846,12 @@ function openPlayer(audioUrl, vttUrl, title, authorName, coverUrl) {
     audio.src = audioUrl;
     currentAudio = audio;
     
-    // Load captions
-    if (vttUrl) {
+    // Load captions (with proper null checking)
+    if (vttUrl && vttUrl !== 'null' && vttUrl !== 'undefined' && vttUrl !== '') {
+        console.log('Loading captions from:', vttUrl);
         loadCaptions(vttUrl);
     } else {
+        console.log('No captions available');
         currentCaptions = [];
         document.getElementById('captionText').textContent = 'No captions available';
     }
@@ -890,12 +892,25 @@ function closePlayer() {
 
 async function loadCaptions(vttUrl) {
     try {
+        console.log('Fetching VTT from:', vttUrl);
         const response = await fetch(vttUrl);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
         const vttText = await response.text();
+        console.log('VTT file loaded, length:', vttText.length);
         
         // Parse VTT
         currentCaptions = parseVTT(vttText);
         console.log('Loaded', currentCaptions.length, 'captions');
+        
+        if (currentCaptions.length === 0) {
+            document.getElementById('captionText').textContent = 'No captions in file';
+        } else {
+            document.getElementById('captionText').textContent = 'Captions loaded';
+        }
         
     } catch (error) {
         console.error('Error loading captions:', error);
