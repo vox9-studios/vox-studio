@@ -7,8 +7,9 @@ import uuid
 Base = declarative_base()
 
 class AuthorProfile(Base):
+    """Author/creator profile"""
     __tablename__ = "author_profiles"
-
+    
     user_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     auth_user_id = Column(UUID(as_uuid=True), ForeignKey("auth.users.id"))  # NEW
     username = Column(String(50), unique=True)  # NEW
