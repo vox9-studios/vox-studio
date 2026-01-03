@@ -952,10 +952,15 @@
         </div>
     </div>
     
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         const API_URL = 'https://vox-platform-api.onrender.com';
-        const AUTHOR_ID = '123e4567-e89b-12d3-a456-426614174000';
+        const SUPABASE_URL = 'https://rsashqeemfrfxurtmyuq.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzYXNocWVlbWZyZnh1cnRteXVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcyODc0NDUsImV4cCI6MjA4Mjg2MzQ0NX0.YZDu15G-6E3Gemax9mukgeqkx2xIXxC6CjGLbily_ik';
         
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        let AUTHOR_ID = null; // Will be set after auth check
         let currentStep = 1;
         let voices = [];
         let selectedVoice = null;
@@ -973,6 +978,37 @@
         };
         // Playlist management (NEW)
         let userPlaylists = [];
+        
+        // Check auth on page load
+        checkAuthAndInit();
+        
+        async function checkAuthAndInit() {
+            try {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                
+                if (!session) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+                
+                const response = await fetch(`${API_URL}/api/authors/me`, {
+                    headers: { 'Authorization': `Bearer ${session.access_token}` }
+                });
+                
+                if (!response.ok) throw new Error('Failed to get author profile');
+                
+                const authorProfile = await response.json();
+                AUTHOR_ID = authorProfile.user_id;
+                
+                // Now init page
+                loadStarredVoices();
+                loadCredits();
+                
+            } catch (error) {
+                console.error('Auth error:', error);
+                window.location.href = 'login.html';
+            }
+        }
         
         // Load starred voices from localStorage
         function loadStarredVoices() {
@@ -1011,11 +1047,6 @@
             filterVoices();
         }
         
-        // Load starred voices on page load
-        loadStarredVoices();
-
-        // Load credits on page load
-        loadCredits();
         
         async function loadCredits() {
             try {
