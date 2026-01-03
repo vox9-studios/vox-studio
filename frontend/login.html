@@ -229,7 +229,7 @@
         const SUPABASE_URL = 'https://rsashqeemfrfxurtmyuq.supabase.co'; // Replace with your URL
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzYXNocWVlbWZyZnh1cnRteXVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcyODc0NDUsImV4cCI6MjA4Mjg2MzQ0NX0.YZDu15G-6E3Gemax9mukgeqkx2xIXxC6CjGLbily_ik'; // Replace with your key
         
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
         const form = document.getElementById('login-form');
         const loginBtn = document.getElementById('login-btn');
@@ -239,7 +239,7 @@
         checkAuth();
         
         async function checkAuth() {
-            const { data: { session } } = await supabase.auth.getSession();
+            const { data: { session } } = await supabaseClient.auth.getSession();
             if (session) {
                 // Already logged in, redirect to dashboard
                 window.location.href = 'dashboard.html';
@@ -259,7 +259,7 @@
             
             try {
                 // Sign in with Supabase
-                const { data, error } = await supabase.auth.signInWithPassword({
+                const { data, error } = await supabaseClient.auth.signInWithPassword({
                     email: email,
                     password: password
                 });
