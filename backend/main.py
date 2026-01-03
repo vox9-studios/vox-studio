@@ -7,6 +7,7 @@ from models import AuthorProfile, Playlist, Episode
 from storage import upload_to_s3, test_s3_connection
 from routes.narration import router as narration_router
 from routes import playlist as playlist_routes
+from routes import authors as authors_routes
 from schemas import (
     AuthorProfileCreate, AuthorProfileRead,
     PlaylistCreate, PlaylistRead
