@@ -19,14 +19,11 @@ class AuthorCreateRequest(BaseModel):
     auth_user_id: str
     username: str
     display_name: str
-    email: str
-
 
 class AuthorResponse(BaseModel):
     user_id: str
     username: str
     display_name: str
-    email: str
     bio: Optional[str]
     avatar_url: Optional[str]
     website_url: Optional[str]
@@ -98,7 +95,6 @@ async def get_my_profile(
         user_id=str(author.user_id),
         username=author.username,
         display_name=author.display_name,
-        email=author.email,
         bio=author.bio,
         avatar_url=author.avatar_url,
         website_url=author.website_url,
@@ -124,7 +120,6 @@ async def get_author_by_username(
         user_id=str(author.user_id),
         username=author.username,
         display_name=author.display_name,
-        email=author.email,
         bio=author.bio,
         avatar_url=author.avatar_url,
         website_url=author.website_url,
