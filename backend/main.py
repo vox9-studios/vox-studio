@@ -25,9 +25,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include narration router
 app.include_router(narration_router)
 app.include_router(playlist_routes.router)
+app.include_router(authors_routes.router)
 
 @app.get("/")
 async def root():
