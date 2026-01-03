@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Text, Boolean, Integer, Float, DateTime, Date, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
 from datetime import datetime, date
 import uuid
 
@@ -72,6 +73,8 @@ class GenerationJob(Base):
     cover_widescreen_url = Column(Text)  # 16:9 (1920x1080) for video
     is_published = Column(Boolean, default=False)
     playlist_id = Column(UUID(as_uuid=True), ForeignKey("playlists.id"))
+    like_count = Column(Integer, default=0)
+    comment_count = Column(Integer, default=0)
     
     # Input
     input_text = Column(Text, nullable=False)
@@ -104,3 +107,50 @@ class GenerationJob(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     started_at = Column(DateTime)
     completed_at = Column(DateTime)
+
+class Comment(Base):
+    __tablename__ = "comments"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    episode_id = Column(UUID(as_uuid=True), ForeignKey("generation_jobs.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), nullable=False)
+    author_name = Column(String(255), nullable=False)
+    author_avatar_url = Column(Text)
+    text = Column(Text, nullable=False)
+    parent_comment_id = Column(UUID(as_uuid=True), ForeignKey("comments.id", ondelete="CASCADE"))
+    like_count = Column(Integer, default=0)
+    is_deleted = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class CommentLike(Base):
+    __tablename__ = "comment_likes"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    comment_id = Column(UUID(as_uuid=True), ForeignKey("comments.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class EpisodeLike(Base):
+    __tablename__ = "episode_likes"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    episode_id = Column(UUID(as_uuid=True), ForeignKey("generation_jobs.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class CommentReport(Base):
+    __tablename__ = "comment_reports"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    comment_id = Column(UUID(as_uuid=True), ForeignKey("comments.id", ondelete="CASCADE"), nullable=False)
+    reporter_id = Column(UUID(as_uuid=True), nullable=False)
+    reason = Column(Text, nullable=False)
+    status = Column(String(50), default="pending")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    reviewed_at = Column(DateTime)
+    reviewed_by = Column(UUID(as_uuid=True))
+
