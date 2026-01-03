@@ -269,7 +269,7 @@
         const SUPABASE_URL = 'https://rsashqeemfrfxurtmyuq.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzYXNocWVlbWZyZnh1cnRteXVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcyODc0NDUsImV4cCI6MjA4Mjg2MzQ0NX0.YZDu15G-6E3Gemax9mukgeqkx2xIXxC6CjGLbily_ik';
         
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
         const form = document.getElementById('signup-form');
         const signupBtn = document.getElementById('signup-btn');
@@ -292,7 +292,7 @@
             
             try {
                 // 1. Create auth user
-                const { data: authData, error: authError } = await supabase.auth.signUp({
+                const { data: authData, error: authError } = await supabaseClient.auth.signUp({
                     email: email,
                     password: password,
                     options: {
