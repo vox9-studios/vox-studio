@@ -794,6 +794,22 @@
                             oninput="setVolume(this.value)"
                         />
                     </div>
+                    
+                    <!-- Playback Speed -->
+                    <div style="display: flex; align-items: center; gap: 8px; margin-left: 16px;">
+                        <span style="font-size: 1rem; color: #aaa;">⚡</span>
+                        <input 
+                            type="range" 
+                            id="speedControl" 
+                            min="75" 
+                            max="200" 
+                            value="100" 
+                            step="25"
+                            style="width: 100px; height: 6px; border-radius: 3px; background: rgba(255,255,255,0.2); outline: none; cursor: pointer; -webkit-appearance: none;"
+                            oninput="setSpeed(this.value)"
+                        />
+                        <span id="speedDisplay" style="font-size: 0.85rem; color: #aaa; min-width: 35px;">1.0x</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1001,6 +1017,13 @@ function seekAudio(value) {
 function setVolume(value) {
     if (!currentAudio) return;
     currentAudio.volume = value / 100;
+}
+
+function setSpeed(value) {
+    if (!currentAudio) return;
+    const speed = value / 100;
+    currentAudio.playbackRate = speed;
+    document.getElementById('speedDisplay').textContent = speed.toFixed(2) + 'x';
 }
 
 function updateProgress() {
