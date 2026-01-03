@@ -1173,6 +1173,11 @@ document.addEventListener('keydown', (e) => {
     const modal = document.getElementById('audioPlayerModal');
     if (modal.style.display === 'none') return;
     
+    // Don't trigger shortcuts when typing in textarea or input
+    const isTyping = e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT';
+    
+    if (isTyping) return; // Exit early if user is typing
+    
     if (e.code === 'Space') {
         e.preventDefault();
         togglePlayPause();
