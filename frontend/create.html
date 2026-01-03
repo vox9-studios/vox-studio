@@ -1622,8 +1622,36 @@
             loadCredits();
         }
         
-        function publishEpisode() {
-            alert('Episode publishing coming soon! For now, your audio is ready at:\n\n' + audioUrl);
+        async function publishEpisode() {
+            if (!generationJob || !generationJob.id) {
+                alert('No episode to publish!');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/api/narration/publish/${generationJob.id}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        is_published: true
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to publish episode');
+                }
+                
+                alert('✅ Episode published successfully!\n\nYour episode is now live and visible on your author page.');
+                
+                // Redirect to dashboard
+                window.location.href = 'dashboard.html';
+                
+            } catch (error) {
+                console.error('Publish error:', error);
+                alert('❌ Failed to publish episode. Please try again.');
+            }
         }
     </script>
         
