@@ -756,7 +756,7 @@
                             <span>${episode.status}</span>
                         </div>
                         <div class="episode-actions">
-                            ${episode.audio_url ? `<button class="icon-btn" onclick="playEpisode('${episode.audio_url}')" title="Play">▶️</button>` : ''}
+                            ${episode.audio_url ? `<button class="icon-btn" onclick="playEpisode('${episode.audio_url}', '${episode.vtt_url || ''}', '${(episode.episode_title || 'Untitled').replace(/'/g, "\\'")}', '${(episode.episode_description || '').replace(/'/g, "\\'")}', '${episode.cover_square_url || ''}')" title="Play">▶️</button>` : ''}
                             <button class="icon-btn" onclick="editEpisode('${episode.id}')" title="Edit">✏️</button>
                             <button class="icon-btn danger" onclick="deleteEpisode('${episode.id}')" title="Delete">🗑️</button>
                         </div>
@@ -765,9 +765,8 @@
             `;
         }
         
-        function playEpisode(audioUrl) {
-            // TODO: Open audio player modal
-            window.open(audioUrl, '_blank');
+        function playEpisode(audioUrl, vttUrl, title, description, coverUrl) {
+            openPlayer(audioUrl, vttUrl, title, '', coverUrl);
         }
         
         function editEpisode(episodeId) {
@@ -801,6 +800,291 @@
                 window.location.href = 'login.html';
             }
         }
+        // Audio Player Functions
+        let currentAudio = null;
+        let currentCaptions = [];
+        let captionCheckInterval = null;
+        
+        function openPlayer(audioUrl, vttUrl, title, authorName, coverUrl) {
+            const modal = document.getElementById('audioPlayerModal');
+            const audio = document.getElementById('audioPlayer');
+            
+            currentAudio = audio;
+            audio.src = audioUrl;
+            
+            // Set cover image
+            const coverImage = document.getElementById('playerCoverImage');
+            if (coverUrl && coverUrl !== 'null' && coverUrl !== '') {
+                coverImage.src = coverUrl;
+            } else {
+                coverImage.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300"><rect fill="%23333" width="300" height="300"/><text x="50%" y="50%" font-size="80" text-anchor="middle" dy=".3em" fill="%23666">🎙️</text></svg>';
+            }
+            
+            // Set episode info
+            document.getElementById('playerTitle').textContent = title || 'Untitled Episode';
+            document.getElementById('playerAuthor').textContent = authorName || 'Unknown';
+            
+            // Reset player
+            audio.currentTime = 0;
+            document.getElementById('progressBar').value = 0;
+            document.getElementById('currentTime').textContent = '0:00';
+            document.getElementById('totalTime').textContent = '0:00';
+            
+            // Load captions
+            if (vttUrl && vttUrl !== 'null' && vttUrl !== '' && vttUrl !== 'undefined') {
+                console.log('Loading captions from:', vttUrl);
+                loadCaptions(vttUrl);
+            } else {
+                console.log('No captions available');
+                currentCaptions = [];
+                document.getElementById('captionText').textContent = 'No captions available';
+            }
+            
+            // Show modal
+            modal.style.display = 'flex';
+            
+            // Auto-play
+            audio.play();
+            updatePlayPauseButton();
+            
+            // Event listeners
+            audio.addEventListener('timeupdate', updateProgress);
+            audio.addEventListener('loadedmetadata', updateTotalTime);
+            
+            // Start caption sync
+            startCaptionSync();
+        }
+        
+        function closePlayer() {
+            const modal = document.getElementById('audioPlayerModal');
+            const audio = document.getElementById('audioPlayer');
+            
+            audio.pause();
+            audio.currentTime = 0;
+            modal.style.display = 'none';
+            
+            if (captionCheckInterval) {
+                clearInterval(captionCheckInterval);
+                captionCheckInterval = null;
+            }
+            
+            currentCaptions = [];
+            document.getElementById('captionText').textContent = 'Captions will appear here...';
+        }
+        
+        function togglePlayPause() {
+            if (!currentAudio) return;
+            
+            if (currentAudio.paused) {
+                currentAudio.play();
+            } else {
+                currentAudio.pause();
+            }
+            updatePlayPauseButton();
+        }
+        
+        function updatePlayPauseButton() {
+            const btn = document.getElementById('playPauseBtn');
+            if (currentAudio && !currentAudio.paused) {
+                btn.textContent = '⏸️';
+            } else {
+                btn.textContent = '▶️';
+            }
+        }
+        
+        function skipTime(seconds) {
+            if (!currentAudio) return;
+            currentAudio.currentTime += seconds;
+        }
+        
+        function seekAudio(value) {
+            if (!currentAudio) return;
+            const time = (value / 100) * currentAudio.duration;
+            currentAudio.currentTime = time;
+        }
+        
+        function setSpeed(value) {
+            if (!currentAudio) return;
+            const speed = value / 100;
+            currentAudio.playbackRate = speed;
+            document.getElementById('speedDisplay').textContent = speed.toFixed(2) + 'x';
+        }
+        
+        function setVolume(value) {
+            if (!currentAudio) return;
+            currentAudio.volume = value / 100;
+        }
+        
+        function updateProgress() {
+            if (!currentAudio) return;
+            const progress = (currentAudio.currentTime / currentAudio.duration) * 100;
+            document.getElementById('progressBar').value = progress || 0;
+            document.getElementById('currentTime').textContent = formatTime(currentAudio.currentTime);
+        }
+        
+        function updateTotalTime() {
+            if (!currentAudio) return;
+            document.getElementById('totalTime').textContent = formatTime(currentAudio.duration);
+        }
+        
+        function formatTime(seconds) {
+            if (!seconds || isNaN(seconds)) return '0:00';
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+        
+        async function loadCaptions(vttUrl) {
+            try {
+                const response = await fetch(vttUrl);
+                if (!response.ok) throw new Error('Failed to load VTT');
+                
+                const vttText = await response.text();
+                currentCaptions = parseVTT(vttText);
+                console.log('Loaded', currentCaptions.length, 'captions');
+                
+            } catch (error) {
+                console.error('Error loading captions:', error);
+                currentCaptions = [];
+                document.getElementById('captionText').textContent = 'Captions unavailable';
+            }
+        }
+        
+        function parseVTT(vttText) {
+            const captions = [];
+            const lines = vttText.split('\n');
+            let i = 0;
+            
+            while (i < lines.length && !lines[i].includes('-->')) i++;
+            
+            while (i < lines.length) {
+                const line = lines[i].trim();
+                
+                if (line.includes('-->')) {
+                    const [startStr, endStr] = line.split('-->').map(s => s.trim());
+                    const start = parseVTTTime(startStr);
+                    const end = parseVTTTime(endStr);
+                    
+                    i++;
+                    let text = '';
+                    while (i < lines.length && lines[i].trim() !== '') {
+                        text += lines[i].trim() + ' ';
+                        i++;
+                    }
+                    
+                    if (text.trim()) {
+                        captions.push({ start, end, text: text.trim() });
+                    }
+                }
+                i++;
+            }
+            
+            return captions;
+        }
+        
+        function parseVTTTime(timeStr) {
+            const parts = timeStr.split(':');
+            const seconds = parts[parts.length - 1].split('.');
+            
+            if (parts.length === 3) {
+                return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseFloat(seconds[0] + '.' + (seconds[1] || '0'));
+            } else {
+                return parseInt(parts[0]) * 60 + parseFloat(seconds[0] + '.' + (seconds[1] || '0'));
+            }
+        }
+        
+        function startCaptionSync() {
+            if (captionCheckInterval) clearInterval(captionCheckInterval);
+            
+            captionCheckInterval = setInterval(() => {
+                if (!currentAudio || currentAudio.paused) return;
+                
+                const time = currentAudio.currentTime;
+                const current = currentCaptions.find(c => time >= c.start && time <= c.end);
+                
+                const captionText = document.getElementById('captionText');
+                if (current) {
+                    captionText.textContent = current.text;
+                    captionText.style.color = '#3ea6ff';
+                } else {
+                    captionText.textContent = currentCaptions.length > 0 ? 'Listening...' : 'No captions available';
+                    captionText.style.color = '#fff';
+                }
+            }, 100);
+        }
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            const modal = document.getElementById('audioPlayerModal');
+            if (!modal || modal.style.display === 'none') return;
+            
+            if (e.code === 'Space') {
+                e.preventDefault();
+                togglePlayPause();
+            } else if (e.code === 'Escape') {
+                closePlayer();
+            } else if (e.code === 'ArrowLeft') {
+                skipTime(-10);
+            } else if (e.code === 'ArrowRight') {
+                skipTime(10);
+            }
+        });
     </script>
+    <!-- Audio Player Modal -->
+    <div id="audioPlayerModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); z-index: 9999; align-items: center; justify-content: center;">
+        <div style="width: 100%; max-width: 800px; padding: 40px;">
+            <!-- Cover Image -->
+            <div style="text-align: center; margin-bottom: 32px;">
+                <img id="playerCoverImage" style="width: 300px; height: 300px; object-fit: cover; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.4);" />
+            </div>
+            
+            <!-- Episode Info -->
+            <div style="text-align: center; margin-bottom: 32px;">
+                <h2 id="playerTitle" style="font-size: 1.8rem; color: #fff; margin-bottom: 8px;">Episode Title</h2>
+                <p id="playerAuthor" style="font-size: 1rem; color: #aaa;">Author Name</p>
+            </div>
+            
+            <!-- Audio Controls -->
+            <div style="background: rgba(33,33,33,0.8); border-radius: 12px; padding: 24px; backdrop-filter: blur(10px);">
+                <!-- Progress Bar -->
+                <input type="range" id="progressBar" min="0" max="100" value="0" style="width: 100%; margin-bottom: 16px; cursor: pointer;" oninput="seekAudio(this.value)">
+                
+                <!-- Time Display -->
+                <div style="display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 0.9rem; color: #aaa;">
+                    <span id="currentTime">0:00</span>
+                    <span id="totalTime">0:00</span>
+                </div>
+                
+                <!-- Control Buttons -->
+                <div style="display: flex; justify-content: center; align-items: center; gap: 16px; margin-bottom: 20px;">
+                    <button onclick="skipTime(-10)" style="padding: 12px 16px; background: rgba(255,255,255,0.1); border: none; border-radius: 8px; color: #fff; cursor: pointer; font-size: 0.9rem;">⏪ 10s</button>
+                    <button id="playPauseBtn" onclick="togglePlayPause()" style="padding: 16px 24px; background: #3ea6ff; border: none; border-radius: 50%; color: #fff; cursor: pointer; font-size: 1.5rem; width: 64px; height: 64px;">▶️</button>
+                    <button onclick="skipTime(10)" style="padding: 12px 16px; background: rgba(255,255,255,0.1); border: none; border-radius: 8px; color: #fff; cursor: pointer; font-size: 0.9rem;">10s ⏩</button>
+                </div>
+                
+                <!-- Speed & Volume Controls -->
+                <div style="display: flex; gap: 24px; align-items: center; margin-bottom: 20px;">
+                    <div style="flex: 1;">
+                        <label style="display: block; margin-bottom: 8px; font-size: 0.85rem; color: #aaa;">⚡ Speed: <span id="speedDisplay">1.00x</span></label>
+                        <input type="range" id="speedSlider" min="75" max="200" value="100" style="width: 100%; cursor: pointer;" oninput="setSpeed(this.value)">
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="display: block; margin-bottom: 8px; font-size: 0.85rem; color: #aaa;">🔊 Volume</label>
+                        <input type="range" id="volumeSlider" min="0" max="100" value="100" style="width: 100%; cursor: pointer;" oninput="setVolume(this.value)">
+                    </div>
+                </div>
+                
+                <!-- Captions -->
+                <div id="captionBox" style="min-height: 80px; padding: 20px; background: rgba(0,0,0,0.5); border-radius: 8px; text-align: center;">
+                    <p id="captionText" style="font-size: 1.1rem; color: #fff; line-height: 1.6;">Captions will appear here...</p>
+                </div>
+            </div>
+            
+            <!-- Close Button -->
+            <button onclick="closePlayer()" style="position: absolute; top: 20px; right: 20px; padding: 12px 20px; background: rgba(255,255,255,0.1); border: none; border-radius: 8px; color: #fff; cursor: pointer; font-size: 1rem;">✕ Close</button>
+        </div>
+        
+        <audio id="audioPlayer" style="display: none;"></audio>
+    </div>
 </body>
 </html>
