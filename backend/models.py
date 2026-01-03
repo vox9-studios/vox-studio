@@ -20,8 +20,8 @@ class AuthorProfile(Base):
     
     # Existing fields:
     email = Column(String(255), unique=True, nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     credits_used = Column(Integer, default=0)
     credits_limit = Column(Integer, default=50000)
     last_credit_reset = Column(Date)
