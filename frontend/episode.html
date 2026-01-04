@@ -716,6 +716,12 @@
         let replyingTo = null;
         let userHasLiked = false;
         let episodeData = null;
+
+        // Paywall state
+        let isEpisodeFree = false;
+        let isUserSubscribed = false;
+        let episodeAuthorId = null;
+        let paywallChecked = false;
         
         // Initialize
         loadEpisode();
@@ -755,6 +761,10 @@
                 
                 episodeData = await response.json();
                 
+                // Store episode info for paywall
+                isEpisodeFree = episodeData.is_free || false;
+                episodeAuthorId = episodeData.author_id;
+                
                 // Fetch author data
                 const authorResponse = await fetch(`${API_URL}/api/authors/by-id/${episodeData.author_id}`);
                 const authorData = await authorResponse.json();
@@ -763,6 +773,10 @@
                 initializePlayer(episodeData);
                 loadComments();
                 checkEpisodeLiked();
+                await checkPaywall();  // NEW: Check paywall after loading
+                
+                } catch (error) {
+                    console.error('Error loading episode:', error);
                 
             } catch (error) {
                 console.error('Error loading episode:', error);
@@ -775,6 +789,46 @@
                         <a href="/" class="btn-secondary">← Back to Home</a>
                     </div>
                 `;
+            }
+        }
+        
+        // Check paywall status
+        async function checkPaywall() {
+            if (paywallChecked) return;
+            paywallChecked = true;
+            
+            // Free episodes - no paywall
+            if (isEpisodeFree) {
+                console.log('✅ Episode is free - no paywall');
+                return;
+            }
+            
+            console.log('🔒 Episode is premium - checking subscription...');
+            
+            // No user logged in - show paywall
+            if (!currentUserId) {
+                console.log('❌ No user logged in - paywall required');
+                return; // Will show paywall at 30s
+            }
+            
+            // Check if user is subscribed to this author
+            try {
+                const response = await fetch(
+                    `${API_URL}/api/subscriptions/check/${currentUserId}/${episodeAuthorId}`
+                );
+                const data = await response.json();
+                
+                isUserSubscribed = data.is_subscribed;
+                
+                if (isUserSubscribed) {
+                    console.log('✅ User is subscribed - full access granted');
+                } else {
+                    console.log('❌ User not subscribed - paywall will show at 30s');
+                }
+                
+            } catch (error) {
+                console.error('Error checking subscription:', error);
+                isUserSubscribed = false;
             }
         }
         
