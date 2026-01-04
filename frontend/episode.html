@@ -686,10 +686,10 @@
     <script>
         const API_URL = 'https://vox-platform-api.onrender.com';
         const { createClient } = supabase;
-        const supabaseClient = createClient(
-            'https://aebiztvzlfsrshgnbmbq.supabase.co',
-            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlYml6dHZ6bGZzcnNoZ25ibWJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ4NzIwNjEsImV4cCI6MjA1MDQ0ODA2MX0.XxdEZ33FD8LTZ6Vq3csCkJCl42WbN_OC_G0aR2CnKaI'
-        );
+        const SUPABASE_URL = 'https://rsashqeemfrfxurtmyuq.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzYXNocWVlbWZyZnh1cnRteXVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcyODc0NDUsImV4cCI6MjA4Mjg2MzQ0NX0.YZDu15G-6E3Gemax9mukgeqkx2xIXxC6CjGLbily_ik';
+        
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
         // Get episode ID from URL
         const urlParams = new URLSearchParams(window.location.search);
