@@ -102,13 +102,12 @@ async def get_author_playlists(
         raise HTTPException(status_code=404, detail="Author not found")
     
     # Get playlists
-    from models import Episode
+    from models import GenerationJob  # CHANGED: Use GenerationJob instead of Episode
     playlists = db.query(Playlist).filter(Playlist.author_id == author_id).all()
     
-    # Count episodes for each playlist
+    # Use episode_count from database column (updated by trigger)
     result = []
     for playlist in playlists:
-        episode_count = db.query(Episode).filter(Episode.playlist_id == playlist.id).count()
         result.append(PlaylistResponse(
             id=str(playlist.id),
             author_id=str(playlist.author_id),
@@ -118,7 +117,7 @@ async def get_author_playlists(
             is_published=playlist.is_published,
             created_at=playlist.created_at.isoformat(),
             updated_at=playlist.updated_at.isoformat(),
-            episode_count=episode_count
+            episode_count=playlist.episode_count or 0  # CHANGED: Use database column
         ))
     
     return result
