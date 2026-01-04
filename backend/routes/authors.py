@@ -298,3 +298,22 @@ async def delete_account(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to delete account: {str(e)}")
+
+@router.get("/by-id/{user_id}")
+async def get_author_by_id(user_id: str, db: Session = Depends(get_db)):
+    """Get author profile by user ID"""
+    
+    author = db.query(AuthorProfile).filter(AuthorProfile.user_id == user_id).first()
+    
+    if not author:
+        raise HTTPException(status_code=404, detail="Author not found")
+    
+    return {
+        "user_id": str(author.user_id),
+        "username": author.username,
+        "display_name": author.display_name,
+        "bio": author.bio,
+        "avatar_url": author.avatar_url,
+        "website_url": author.website_url
+    }
+    
