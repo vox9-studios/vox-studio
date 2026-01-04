@@ -398,6 +398,7 @@ async def get_author_episodes(
             "cover_mobile_url": job.cover_mobile_url,
             "cover_widescreen_url": job.cover_widescreen_url,
             "is_published": job.is_published,
+            "is_free": job.is_free or False,
             "playlist_id": str(job.playlist_id) if job.playlist_id else None,
             "audio_url": job.audio_url,
             "vtt_url": job.vtt_url,
@@ -606,6 +607,9 @@ async def update_episode(
         
     if 'cover_square_url' in request:
         episode.cover_square_url = request['cover_square_url']
+
+    if 'is_free' in request:
+    episode.is_free = request['is_free']
         
     db.commit()
     db.refresh(episode)
