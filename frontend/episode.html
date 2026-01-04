@@ -753,7 +753,7 @@
         async function loadEpisode() {
             try {
                 // Fetch episode data
-                const response = await fetch(`${API_URL}/api/narration/episode/${episodeId}`);
+                const response = await fetch ( ` ${API_URL}/api/narration/episode/${episodeId}`);
                 
                 if (!response.ok) {
                     throw new Error('Episode not found');
@@ -773,10 +773,7 @@
                 initializePlayer(episodeData);
                 loadComments();
                 checkEpisodeLiked();
-                await checkPaywall();  // NEW: Check paywall after loading
-                
-                } catch (error) {
-                    console.error('Error loading episode:', error);
+                await checkPaywall();
                 
             } catch (error) {
                 console.error('Error loading episode:', error);
