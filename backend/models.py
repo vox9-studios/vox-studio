@@ -24,6 +24,7 @@ class AuthorProfile(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     credits_used = Column(Integer, default=0)
     credits_limit = Column(Integer, default=50000)
+    subscriber_count = Column(Integer, default=0)
     last_credit_reset = Column(Date)
     
     # Credit tracking columns
@@ -31,7 +32,38 @@ class AuthorProfile(Base):
     credits_limit = Column(Integer, default=50000)
     last_credit_reset = Column(Date, default=date.today)
 
-
+class Subscription(Base):
+    """Subscription model - tracks fan subscriptions to authors"""
+    __tablename__ = "subscriptions"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    
+    # Who is subscribing (fan)
+    subscriber_user_id = Column(UUID(as_uuid=True), ForeignKey('author_profiles.user_id'), nullable=False)
+    
+    # Who they're subscribing to (author)
+    author_user_id = Column(UUID(as_uuid=True), ForeignKey('author_profiles.user_id'), nullable=False)
+    
+    # Stripe data
+    stripe_subscription_id = Column(String, unique=True, nullable=True)
+    stripe_customer_id = Column(String, nullable=True)
+    
+    # Subscription status
+    status = Column(String, default='active', nullable=False)
+    
+    # Pricing
+    amount_cents = Column(Integer, default=250, nullable=False)
+    currency = Column(String, default='usd', nullable=False)
+    
+    # Billing period
+    current_period_start = Column(DateTime(timezone=True), nullable=True)
+    current_period_end = Column(DateTime(timezone=True), nullable=True)
+    
+    # Metadata
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    canceled_at = Column(DateTime(timezone=True), nullable=True)
+    
 class Playlist(Base):
     __tablename__ = "playlists"
     
@@ -73,6 +105,7 @@ class GenerationJob(Base):
     cover_mobile_url = Column(Text)      # 9:16 (1080x1920) for social media  
     cover_widescreen_url = Column(Text)  # 16:9 (1920x1080) for video
     is_published = Column(Boolean, default=False)
+    is_free = Column(Boolean, default=False)
     playlist_id = Column(UUID(as_uuid=True), ForeignKey("playlists.id"))
     like_count = Column(Integer, default=0)
     comment_count = Column(Integer, default=0)
