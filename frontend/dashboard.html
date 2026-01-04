@@ -799,6 +799,7 @@
             document.getElementById('editEpisodeTitle').value = episode.episode_title || '';
             document.getElementById('editEpisodeDescription').value = episode.episode_description || '';
             document.getElementById('editEpisodePublished').checked = episode.is_published || false;
+            document.getElementById('editEpisodeFree').checked = episode.is_free || false;
             
             // Populate playlist dropdown
             const playlistSelect = document.getElementById('editEpisodePlaylist');
@@ -837,6 +838,7 @@
             const description = document.getElementById('editEpisodeDescription').value;
             const playlistId = document.getElementById('editEpisodePlaylist').value;
             const isPublished = document.getElementById('editEpisodePublished').checked;
+            const isFree = document.getElementById('editEpisodeFree').checked;
             
             try {
                 const response = await fetch(`${API_URL}/api/narration/episodes/${currentEditingEpisodeId}`, {
@@ -847,6 +849,7 @@
                         episode_description: description,
                         playlist_id: playlistId || null,
                         is_published: isPublished,
+                        is_free: isFree,
                         cover_square_url: editCoverUrl
                     })
                 });
@@ -1134,9 +1137,12 @@
             </div>            
             <div style="margin-bottom: 24px;">
                 <label style="display: flex; align-items: center; cursor: pointer; color: #aaa;">
-                    <input type="checkbox" id="editEpisodePublished" style="margin-right: 8px; width: 18px; height: 18px;">
-                    <span>Published (uncheck to make draft)</span>
+                    <input type="checkbox" id="editEpisodeFree" style="margin-right: 8px; width: 18px; height: 18px;">
+                    <span>Free Episode (uncheck to require subscription)</span>
                 </label>
+                <div style="font-size: 0.8rem; color: #666; margin-top: 4px; margin-left: 26px;">
+                    💡 Premium episodes require fans to subscribe for $2.50/month
+                </div>
             </div>
             
             <div style="display: flex; gap: 12px; justify-content: flex-end;">
