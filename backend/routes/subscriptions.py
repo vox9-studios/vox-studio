@@ -36,25 +36,35 @@ async def check_subscription(
             status="self"
         )
     
-    # Check for active subscription
-    subscription = db.query(Subscription).filter(
-        Subscription.subscriber_user_id == subscriber_user_id,
-        Subscription.author_user_id == author_user_id,
-        Subscription.status == 'active'
-    ).first()
-    
-    if subscription:
+    try:
+        # Check for active subscription
+        subscription = db.query(Subscription).filter(
+            Subscription.subscriber_user_id == subscriber_user_id,
+            Subscription.author_user_id == author_user_id,
+            Subscription.status == 'active'
+        ).first()
+        
+        if subscription:
+            return CheckSubscriptionResponse(
+                is_subscribed=True,
+                subscription_id=str(subscription.id),
+                status=subscription.status
+            )
+        
         return CheckSubscriptionResponse(
-            is_subscribed=True,
-            subscription_id=str(subscription.id),
-            status=subscription.status
+            is_subscribed=False,
+            subscription_id=None,
+            status=None
         )
     
-    return CheckSubscriptionResponse(
-        is_subscribed=False,
-        subscription_id=None,
-        status=None
-    )
+    except Exception as e:
+        # If UUIDs are invalid or any error, return not subscribed
+        print(f"Subscription check error: {e}")
+        return CheckSubscriptionResponse(
+            is_subscribed=False,
+            subscription_id=None,
+            status=None
+        )
 
 
 @router.post("/create-test")
