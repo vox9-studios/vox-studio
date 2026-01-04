@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Episode - Vox 9 Studios</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0f0f0f;
+            color: #f1f1f1;
+            min-height: 100vh;
+        }
+        
+        /* Navigation */
+        .nav {
+            background: #212121;
+            border-bottom: 1px solid #3d3d3d;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+        }
+        
+        .logo img {
+            height: 40px;
+            width: auto;
+        }
+        
+        .nav-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        
+        .btn-secondary {
+            padding: 10px 20px;
+            background: transparent;
+            border: 1px solid #3d3d3d;
+            color: #f1f1f1;
+            border-radius: 20px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-secondary:hover {
+            border-color: #3ea6ff;
+            color: #3ea6ff;
+        }
+        
+        /* Episode Header */
+        .episode-header {
+            background: linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%);
+            padding: 60px 24px 40px;
+            border-bottom: 1px solid #3d3d3d;
+        }
+        
+        .header-content {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: flex;
+            gap: 40px;
+            align-items: flex-start;
+        }
+        
+        .episode-cover {
+            width: 300px;
+            height: 300px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #3d3d3d 0%, #1a1a1a 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+            flex-shrink: 0;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        
+        .episode-cover img {
+            width: 100%;
+            height: 100%;
+            border-radius: 16px;
+            object-fit: cover;
+        }
+        
+        .episode-info {
+            flex: 1;
+        }
+        
+        .episode-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 16px;
+            line-height: 1.2;
+        }
+        
+        .episode-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 24px;
+            font-size: 0.95rem;
+            color: #aaa;
+        }
+        
+        .author-link {
+            color: #3ea6ff;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .author-link:hover {
+            color: #1c8fff;
+        }
+        
+        .episode-description {
+            font-size: 1.05rem;
+            color: #ccc;
+            line-height: 1.8;
+            margin-bottom: 32px;
+        }
+        
+        .episode-stats {
+            display: flex;
+            gap: 32px;
+            margin-bottom: 24px;
+        }
+        
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #3ea6ff;
+        }
+        
+        .stat-label {
+            font-size: 0.85rem;
+            color: #666;
+        }
+        
+        /* Audio Player */
+        .player-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+        
+        .player-card {
+            background: #212121;
+            border: 1px solid #3d3d3d;
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 40px;
+        }
+        
+        .player-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+        
+        .progress-container {
+            width: 100%;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.1);
+            outline: none;
+            cursor: pointer;
+            -webkit-appearance: none;
+        }
+        
+        .progress-bar::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #3ea6ff;
+            cursor: pointer;
+        }
+        
+        .progress-bar::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #3ea6ff;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .time-display {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+        
+        .controls-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .play-controls {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+        
+        .control-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #fff;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .control-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .play-btn {
+            width: 70px;
+            height: 70px;
+            background: #3ea6ff;
+            border: none;
+            font-size: 2rem;
+        }
+        
+        .play-btn:hover {
+            background: #1c8fff;
+        }
+        
+        .secondary-controls {
+            display: flex;
+            gap: 24px;
+            align-items: center;
+        }
+        
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .control-slider {
+            width: 100px;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255,255,255,0.2);
+            outline: none;
+            cursor: pointer;
+            -webkit-appearance: none;
+        }
+        
+        .control-label {
+            font-size: 0.85rem;
+            color: #aaa;
+            min-width: 35px;
+        }
+        
+        /* Captions */
+        .captions-display {
+            background: rgba(0,0,0,0.5);
+            border-radius: 12px;
+            padding: 24px 32px;
+            margin-bottom: 24px;
+            min-height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .caption-text {
+            font-size: 1.3rem;
+            line-height: 1.8;
+            color: #fff;
+            text-align: center;
+            font-weight: 400;
+        }
+        
+        /* Comments */
+        .comments-section {
+            background: #212121;
+            border: 1px solid #3d3d3d;
+            border-radius: 16px;
+            padding: 32px;
+        }
+        
+        .comments-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        
+        .comments-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #fff;
+        }
+        
+        .comments-controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        
+        .like-btn {
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid #3d3d3d;
+            border-radius: 8px;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+        }
+        
+        .like-btn:hover {
+            border-color: #f44336;
+            color: #f44336;
+        }
+        
+        .sort-select {
+            padding: 10px 16px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid #3d3d3d;
+            border-radius: 8px;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        
+        .comment-box {
+            margin-bottom: 32px;
+        }
+        
+        .comment-input {
+            width: 100%;
+            padding: 16px;
+            background: #1a1a1a;
+            border: 1px solid #3d3d3d;
+            border-radius: 12px;
+            color: #f1f1f1;
+            font-size: 1rem;
+            resize: vertical;
+            font-family: inherit;
+        }
+        
+        .comment-input:focus {
+            outline: none;
+            border-color: #3ea6ff;
+        }
+        
+        .comment-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+        }
+        
+        .char-count {
+            font-size: 0.85rem;
+            color: #666;
+        }
+        
+        .post-btn {
+            padding: 12px 24px;
+            background: #3ea6ff;
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        
+        .post-btn:hover {
+            background: #1c8fff;
+        }
+        
+        .comments-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        
+        .comment {
+            padding: 20px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .comment-header {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        
+        .comment-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3ea6ff 0%, #0066cc 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: white;
+            flex-shrink: 0;
+        }
+        
+        .comment-avatar img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        
+        .comment-content {
+            flex: 1;
+        }
+        
+        .comment-author {
+            font-weight: 600;
+            color: #fff;
+            margin-right: 8px;
+        }
+        
+        .comment-time {
+            font-size: 0.85rem;
+            color: #666;
+        }
+        
+        .comment-text {
+            color: #f1f1f1;
+            line-height: 1.6;
+            margin-bottom: 12px;
+        }
+        
+        .comment-actions {
+            display: flex;
+            gap: 16px;
+        }
+        
+        .comment-action {
+            padding: 6px 12px;
+            background: transparent;
+            border: 1px solid transparent;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 0.85rem;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        
+        .comment-action:hover {
+            border-color: #3d3d3d;
+            color: #3ea6ff;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+        
+        .empty-icon {
+            font-size: 3rem;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+        
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #3d3d3d;
+            border-top-color: #3ea6ff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+            }
+            
+            .episode-cover {
+                width: 250px;
+                height: 250px;
+            }
+            
+            .episode-title {
+                font-size: 2rem;
+            }
+            
+            .controls-row {
+                flex-direction: column;
+                gap: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav">
+        <a href="/" class="logo">
+            <img src="vox9-logo2.png" alt="Vox 9 Studios">
+        </a>
+        <div class="nav-actions">
+            <a href="/" class="btn-secondary">← Browse</a>
+        </div>
+    </nav>
+    
+    <!-- Episode Header -->
+    <div class="episode-header">
+        <div class="header-content" id="episodeHeader">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Loading episode...</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Player & Comments -->
+    <div class="player-container">
+        <!-- Audio Player -->
+        <div class="player-card">
+            <div id="captionsDisplay" class="captions-display">
+                <p id="captionText" class="caption-text">Captions will appear here...</p>
+            </div>
+            
+            <div class="player-controls">
+                <div class="progress-container">
+                    <input 
+                        type="range" 
+                        id="progressBar" 
+                        class="progress-bar"
+                        min="0" 
+                        max="100" 
+                        value="0"
+                        oninput="seekAudio(this.value)"
+                    />
+                    <div class="time-display">
+                        <span id="currentTime">0:00</span>
+                        <span id="totalTime">0:00</span>
+                    </div>
+                </div>
+                
+                <div class="controls-row">
+                    <div class="play-controls">
+                        <button class="control-btn" onclick="skipTime(-10)">⏪</button>
+                        <button id="playPauseBtn" class="control-btn play-btn" onclick="togglePlayPause()">▶️</button>
+                        <button class="control-btn" onclick="skipTime(10)">⏩</button>
+                    </div>
+                    
+                    <div class="secondary-controls">
+                        <div class="control-group">
+                            <span>🔊</span>
+                            <input 
+                                type="range" 
+                                id="volumeControl" 
+                                class="control-slider"
+                                min="0" 
+                                max="100" 
+                                value="100"
+                                oninput="setVolume(this.value)"
+                            />
+                        </div>
+                        
+                        <div class="control-group">
+                            <span>⚡</span>
+                            <input 
+                                type="range" 
+                                id="speedControl" 
+                                class="control-slider"
+                                min="75" 
+                                max="200" 
+                                value="100"
+                                step="25"
+                                oninput="setSpeed(this.value)"
+                            />
+                            <span id="speedDisplay" class="control-label">1.0x</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Comments Section -->
+        <div class="comments-section">
+            <div class="comments-header">
+                <h2 class="comments-title">💬 Comments (<span id="commentCount">0</span>)</h2>
+                <div class="comments-controls">
+                    <button id="likeEpisodeBtn" class="like-btn" onclick="toggleEpisodeLike()">
+                        <span id="likeIcon">🤍</span> <span id="likeCount">0</span>
+                    </button>
+                    <select id="commentSort" class="sort-select" onchange="loadComments()">
+                        <option value="newest">Newest First</option>
+                        <option value="oldest">Oldest First</option>
+                        <option value="most_liked">Most Liked</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="comment-box">
+                <textarea 
+                    id="commentInput" 
+                    class="comment-input"
+                    placeholder="Add a comment..."
+                    rows="4"
+                ></textarea>
+                <div class="comment-footer">
+                    <span id="charCount" class="char-count">0 / 2000</span>
+                    <button class="post-btn" onclick="postComment()">Post Comment</button>
+                </div>
+            </div>
+            
+            <div id="commentsList" class="comments-list">
+                <div class="empty-state">
+                    <div class="empty-icon">💬</div>
+                    <p>No comments yet. Be the first to comment!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <audio id="audioPlayer" preload="metadata"></audio>
+    
+    <script>
+        const API_URL = 'https://vox-platform-api.onrender.com';
+        const { createClient } = supabase;
+        const supabaseClient = createClient(
+            'https://aebiztvzlfsrshgnbmbq.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlYml6dHZ6bGZzcnNoZ25ibWJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ4NzIwNjEsImV4cCI6MjA1MDQ0ODA2MX0.XxdEZ33FD8LTZ6Vq3csCkJCl42WbN_OC_G0aR2CnKaI'
+        );
+        
+        // Get episode ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const episodeId = urlParams.get('id');
+        
+        if (!episodeId) {
+            document.getElementById('episodeHeader').innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">😞</div>
+                    <h3>No Episode Specified</h3>
+                    <p>Please provide an episode ID.</p>
+                    <br>
+                    <a href="/" class="btn-secondary">← Back to Home</a>
+                </div>
+            `;
+            throw new Error('No episode ID provided');
+        }
+        
+        let currentAudio = null;
+        let currentCaptions = [];
+        let captionCheckInterval = null;
+        let currentUserId = null;
+        let allComments = [];
+        let replyingTo = null;
+        let userHasLiked = false;
+        let episodeData = null;
+        
+        // Initialize
+        loadEpisode();
+        getCurrentUser();
+        
+        // Character counter
+        const commentInput = document.getElementById('commentInput');
+        const charCount = document.getElementById('charCount');
+        
+        commentInput.addEventListener('input', (e) => {
+            const length = e.target.value.length;
+            charCount.textContent = `${length} / 2000`;
+            charCount.style.color = length > 2000 ? '#f44336' : '#666';
+        });
+        
+        // Get current user
+        async function getCurrentUser() {
+            try {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                if (session) {
+                    currentUserId = session.user.id;
+                }
+            } catch (error) {
+                console.error('Error getting user:', error);
+            }
+        }
+        
+        // Load episode
+        async function loadEpisode() {
+            try {
+                // Fetch episode data
+                const response = await fetch(`${API_URL}/api/narration/episode/${episodeId}`);
+                
+                if (!response.ok) {
+                    throw new Error('Episode not found');
+                }
+                
+                episodeData = await response.json();
+                
+                // Fetch author data
+                const authorResponse = await fetch(`${API_URL}/api/authors/by-id/${episodeData.author_id}`);
+                const authorData = await authorResponse.json();
+                
+                renderEpisodeHeader(episodeData, authorData);
+                initializePlayer(episodeData);
+                loadComments();
+                checkEpisodeLiked();
+                
+            } catch (error) {
+                console.error('Error loading episode:', error);
+                document.getElementById('episodeHeader').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">😞</div>
+                        <h3>Episode Not Found</h3>
+                        <p>This episode doesn't exist or has been removed.</p>
+                        <br>
+                        <a href="/" class="btn-secondary">← Back to Home</a>
+                    </div>
+                `;
+            }
+        }
+        
+        function renderEpisodeHeader(episode, author) {
+            const date = new Date(episode.created_at).toLocaleDateString('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric'
+            });
+            
+            document.getElementById('episodeHeader').innerHTML = `
+                <div class="episode-cover">
+                    ${episode.cover_square_url ? 
+                        `<img src="${episode.cover_square_url}" alt="${episode.episode_title}">` : 
+                        '🎙️'
+                    }
+                </div>
+                <div class="episode-info">
+                    <h1 class="episode-title">${episode.episode_title || 'Untitled Episode'}</h1>
+                    <div class="episode-meta">
+                        <span>by <a href="author.html?u=${author.username}" class="author-link">${author.display_name}</a></span>
+                        <span>•</span>
+                        <span>${date}</span>
+                    </div>
+                    <p class="episode-description">${episode.episode_description || 'No description available.'}</p>
+                    <div class="episode-stats">
+                        <div class="stat-item">
+                            <span class="stat-value" id="headerLikeCount">${episode.like_count || 0}</span>
+                            <span class="stat-label">Likes</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value" id="headerCommentCount">${episode.comment_count || 0}</span>
+                            <span class="stat-label">Comments</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.title = `${episode.episode_title} - Vox 9 Studios`;
+        }
+        
+        function initializePlayer(episode) {
+            const audio = document.getElementById('audioPlayer');
+            audio.src = episode.audio_url;
+            currentAudio = audio;
+            
+            // Load captions
+            if (episode.vtt_url) {
+                loadCaptions(episode.vtt_url);
+            }
+            
+            // Event listeners
+            audio.addEventListener('timeupdate', updateProgress);
+            audio.addEventListener('loadedmetadata', updateTotalTime);
+            audio.addEventListener('ended', onAudioEnded);
+            
+            startCaptionSync();
+        }
+        
+        // Audio controls
+        function togglePlayPause() {
+            if (!currentAudio) return;
+            
+            if (currentAudio.paused) {
+                currentAudio.play();
+            } else {
+                currentAudio.pause();
+            }
+            
+            updatePlayPauseButton();
+        }
+        
+        function updatePlayPauseButton() {
+            const btn = document.getElementById('playPauseBtn');
+            if (currentAudio && !currentAudio.paused) {
+                btn.textContent = '⏸️';
+            } else {
+                btn.textContent = '▶️';
+            }
+        }
+        
+        function skipTime(seconds) {
+            if (!currentAudio) return;
+            currentAudio.currentTime = Math.max(0, Math.min(currentAudio.duration, currentAudio.currentTime + seconds));
+        }
+        
+        function seekAudio(value) {
+            if (!currentAudio) return;
+            const time = (value / 100) * currentAudio.duration;
+            currentAudio.currentTime = time;
+        }
+        
+        function setVolume(value) {
+            if (!currentAudio) return;
+            currentAudio.volume = value / 100;
+        }
+        
+        function setSpeed(value) {
+            if (!currentAudio) return;
+            const speed = value / 100;
+            currentAudio.playbackRate = speed;
+            document.getElementById('speedDisplay').textContent = speed.toFixed(2) + 'x';
+        }
+        
+        function updateProgress() {
+            if (!currentAudio) return;
+            
+            const progress = (currentAudio.currentTime / currentAudio.duration) * 100;
+            document.getElementById('progressBar').value = progress || 0;
+            document.getElementById('currentTime').textContent = formatTime(currentAudio.currentTime);
+        }
+        
+        function updateTotalTime() {
+            if (!currentAudio) return;
+            document.getElementById('totalTime').textContent = formatTime(currentAudio.duration);
+        }
+        
+        function formatTime(seconds) {
+            if (!seconds || isNaN(seconds)) return '0:00';
+            
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+        
+        function onAudioEnded() {
+            updatePlayPauseButton();
+            document.getElementById('captionText').textContent = 'Episode finished';
+        }
+        
+        // Captions
+        async function loadCaptions(vttUrl) {
+            try {
+                const response = await fetch(vttUrl);
+                if (!response.ok) throw new Error('Failed to load captions');
+                
+                const vttText = await response.text();
+                currentCaptions = parseVTT(vttText);
+                
+            } catch (error) {
+                console.error('Error loading captions:', error);
+                document.getElementById('captionText').textContent = 'Captions unavailable';
+            }
+        }
+        
+        function parseVTT(vttText) {
+            const captions = [];
+            const lines = vttText.split('\n');
+            let i = 0;
+            
+            while (i < lines.length && !lines[i].includes('-->')) i++;
+            
+            while (i < lines.length) {
+                const line = lines[i].trim();
+                
+                if (line.includes('-->')) {
+                    const [startStr, endStr] = line.split('-->').map(s => s.trim());
+                    const start = parseVTTTime(startStr);
+                    const end = parseVTTTime(endStr);
+                    
+                    i++;
+                    let text = '';
+                    while (i < lines.length && lines[i].trim() !== '') {
+                        text += lines[i].trim() + ' ';
+                        i++;
+                    }
+                    
+                    if (text.trim()) {
+                        captions.push({ start, end, text: text.trim() });
+                    }
+                }
+                i++;
+            }
+            
+            return captions;
+        }
+        
+        function parseVTTTime(timeStr) {
+            const parts = timeStr.split(':');
+            let seconds = 0;
+            
+            if (parts.length === 3) {
+                seconds = parseFloat(parts[0]) * 3600 + parseFloat(parts[1]) * 60 + parseFloat(parts[2]);
+            } else if (parts.length === 2) {
+                seconds = parseFloat(parts[0]) * 60 + parseFloat(parts[1]);
+            }
+            
+            return seconds;
+        }
+        
+        function startCaptionSync() {
+            captionCheckInterval = setInterval(() => {
+                if (!currentAudio) return;
+                
+                const currentTime = currentAudio.currentTime;
+                const caption = currentCaptions.find(c => currentTime >= c.start && currentTime <= c.end);
+                
+                const captionText = document.getElementById('captionText');
+                
+                if (caption) {
+                    captionText.textContent = caption.text;
+                    captionText.style.color = '#3ea6ff';
+                } else if (currentCaptions.length === 0) {
+                    captionText.textContent = 'No captions available';
+                    captionText.style.color = '#aaa';
+                } else {
+                    captionText.textContent = '';
+                    captionText.style.color = '#aaa';
+                }
+            }, 100);
+        }
+        
+        // Comments functions
+        async function loadComments() {
+            const sort = document.getElementById('commentSort').value;
+            
+            try {
+                const response = await fetch(`${API_URL}/api/comments/${episodeId}?sort=${sort}`);
+                const data = await response.json();
+                
+                allComments = data.comments || [];
+                document.getElementById('commentCount').textContent = data.total_count || 0;
+                document.getElementById('headerCommentCount').textContent = data.total_count || 0;
+                
+                renderComments();
+                
+            } catch (error) {
+                console.error('Error loading comments:', error);
+            }
+        }
+        
+        function renderComments() {
+            const container = document.getElementById('commentsList');
+            
+            if (allComments.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">💬</div>
+                        <p>No comments yet. Be the first to comment!</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = allComments.map(comment => renderComment(comment, 0)).join('');
+        }
+        
+        function renderComment(comment, depth) {
+            const marginLeft = depth * 40;
+            const avatar = comment.author_avatar_url ? 
+                `<img src="${comment.author_avatar_url}">` :
+                comment.author_name.charAt(0).toUpperCase();
+            
+            const timeAgo = getTimeAgo(comment.created_at);
+            
+            let html = `
+                <div class="comment" style="margin-left: ${marginLeft}px;">
+                    <div class="comment-header">
+                        <div class="comment-avatar">${avatar}</div>
+                        <div class="comment-content">
+                            <div>
+                                <span class="comment-author">${escapeHtml(comment.author_name)}</span>
+                                <span class="comment-time">${timeAgo}</span>
+                            </div>
+                            <p class="comment-text">${escapeHtml(comment.text)}</p>
+                            <div class="comment-actions">
+                                <button class="comment-action" onclick="toggleCommentLike('${comment.id}')">
+                                    👍 ${comment.like_count || 0}
+                                </button>
+                                ${depth < 3 ? `
+                                <button class="comment-action" onclick="startReply('${comment.id}', '${escapeHtml(comment.author_name)}')">
+                                    💬 Reply
+                                </button>
+                                ` : ''}
+                                ${currentUserId === comment.user_id ? `
+                                <button class="comment-action" onclick="deleteComment('${comment.id}')">
+                                    🗑️ Delete
+                                </button>
+                                ` : `
+                                <button class="comment-action" onclick="reportComment('${comment.id}')">
+                                    🚩 Report
+                                </button>
+                                `}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            if (comment.replies && comment.replies.length > 0) {
+                html += comment.replies.map(reply => renderComment(reply, depth + 1)).join('');
+            }
+            
+            return html;
+        }
+        
+        async function postComment() {
+            const text = commentInput.value.trim();
+            
+            if (!text) {
+                alert('Please enter a comment');
+                return;
+            }
+            
+            if (text.length > 2000) {
+                alert('Comment is too long (max 2000 characters)');
+                return;
+            }
+            
+            if (!currentUserId) {
+                alert('Please log in to comment');
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/api/comments/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        episode_id: episodeId,
+                        user_id: currentUserId,
+                        text: text,
+                        parent_comment_id: replyingTo
+                    })
+                });
+                
+                if (!response.ok) throw new Error('Failed to post comment');
+                
+                commentInput.value = '';
+                charCount.textContent = '0 / 2000';
+                
+                if (replyingTo) cancelReply();
+                
+                await loadComments();
+                
+            } catch (error) {
+                console.error('Post comment error:', error);
+                alert('Failed to post comment');
+            }
+        }
+        
+        function startReply(commentId, authorName) {
+            replyingTo = commentId;
+            commentInput.placeholder = `Replying to ${authorName}...`;
+            commentInput.focus();
+        }
+        
+        function cancelReply() {
+            replyingTo = null;
+            commentInput.placeholder = 'Add a comment...';
+        }
+        
+        async function toggleCommentLike(commentId) {
+            if (!currentUserId) {
+                alert('Please log in to like comments');
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/api/comments/${commentId}/like`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: currentUserId })
+                });
+                
+                if (!response.ok) throw new Error('Failed to toggle like');
+                
+                await loadComments();
+                
+            } catch (error) {
+                console.error('Like error:', error);
+            }
+        }
+        
+        async function toggleEpisodeLike() {
+            if (!currentUserId) {
+                alert('Please log in to like episodes');
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/api/comments/episodes/${episodeId}/like`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: currentUserId })
+                });
+                
+                if (!response.ok) throw new Error('Failed to toggle like');
+                
+                const data = await response.json();
+                userHasLiked = data.liked;
+                
+                const likeCountEl = document.getElementById('likeCount');
+                const headerLikeCountEl = document.getElementById('headerLikeCount');
+                const currentCount = parseInt(likeCountEl.textContent);
+                const newCount = data.liked ? currentCount + 1 : currentCount - 1;
+                
+                likeCountEl.textContent = newCount;
+                headerLikeCountEl.textContent = newCount;
+                
+                updateLikeButton();
+                
+            } catch (error) {
+                console.error('Like error:', error);
+            }
+        }
+        
+        function updateLikeButton() {
+            const btn = document.getElementById('likeEpisodeBtn');
+            const icon = document.getElementById('likeIcon');
+            
+            if (userHasLiked) {
+                icon.textContent = '❤️';
+                btn.style.borderColor = '#f44336';
+                btn.style.color = '#f44336';
+            } else {
+                icon.textContent = '🤍';
+                btn.style.borderColor = '#3d3d3d';
+                btn.style.color = '#aaa';
+            }
+        }
+        
+        async function checkEpisodeLiked() {
+            if (!currentUserId) return;
+            
+            try {
+                const response = await fetch(`${API_URL}/api/comments/episodes/${episodeId}/liked?user_id=${currentUserId}`);
+                const data = await response.json();
+                userHasLiked = data.liked;
+                updateLikeButton();
+            } catch (error) {
+                console.error('Error checking like status:', error);
+            }
+        }
+        
+        async function deleteComment(commentId) {
+            if (!confirm('Delete this comment?')) return;
+            
+            try {
+                const response = await fetch(`${API_URL}/api/comments/${commentId}?user_id=${currentUserId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (!response.ok) throw new Error('Failed to delete comment');
+                
+                await loadComments();
+                
+            } catch (error) {
+                console.error('Delete error:', error);
+                alert('Failed to delete comment');
+            }
+        }
+        
+        async function reportComment(commentId) {
+            const reason = prompt('Why are you reporting this comment?');
+            if (!reason) return;
+            
+            if (!currentUserId) {
+                alert('Please log in to report comments');
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/api/comments/${commentId}/report`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: currentUserId,
+                        reason: reason
+                    })
+                });
+                
+                if (!response.ok) throw new Error('Failed to report comment');
+                
+                alert('Comment reported. Thank you for helping keep our community safe.');
+                
+            } catch (error) {
+                console.error('Report error:', error);
+                alert('Failed to report comment');
+            }
+        }
+        
+        function getTimeAgo(dateString) {
+            const date = new Date(dateString);
+            const now = new Date();
+            const seconds = Math.floor((now - date) / 1000);
+            
+            if (seconds < 60) return 'just now';
+            if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+            if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+            if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+            return date.toLocaleDateString();
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Keyboard shortcuts (ignore when typing)
+        document.addEventListener('keydown', (e) => {
+            const isTyping = e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT';
+            if (isTyping) return;
+            
+            if (e.code === 'Space') {
+                e.preventDefault();
+                togglePlayPause();
+            } else if (e.code === 'ArrowLeft') {
+                skipTime(-10);
+            } else if (e.code === 'ArrowRight') {
+                skipTime(10);
+            }
+        });
+    </script>
+</body>
+</html>
