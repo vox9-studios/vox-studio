@@ -104,3 +104,29 @@ async def create_test_subscription(
         "subscription_id": str(subscription.id),
         "message": "Test subscription created"
     }
+
+@router.get("/stripe-test")
+async def test_stripe():
+    """Test Stripe connection"""
+    import stripe
+    from config import STRIPE_SECRET_KEY
+    
+    if not STRIPE_SECRET_KEY:
+        return {"error": "STRIPE_SECRET_KEY not set"}
+    
+    stripe.api_key = STRIPE_SECRET_KEY
+    
+    try:
+        # Try to list products (will return empty in test mode, but proves connection works)
+        products = stripe.Product.list(limit=1)
+        return {
+            "success": True,
+            "message": "Stripe connected successfully!",
+            "mode": "test" if STRIPE_SECRET_KEY.startswith("sk_test") else "live"
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+        
