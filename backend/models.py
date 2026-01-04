@@ -41,6 +41,7 @@ class Playlist(Base):
     description = Column(Text)
     cover_image_url = Column(Text)
     is_published = Column(Boolean, default=False)
+    episode_count = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
