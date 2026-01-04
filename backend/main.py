@@ -9,6 +9,7 @@ from routes.narration import router as narration_router
 from routes import playlist as playlist_routes
 from routes import authors as authors_routes
 from routes import comments as comments_routes
+from routes import subscriptions as subscriptions_routes
 from schemas import (
     AuthorProfileCreate, AuthorProfileRead,
     PlaylistCreate, PlaylistRead
@@ -31,6 +32,8 @@ app.include_router(narration_router)
 app.include_router(playlist_routes.router)
 app.include_router(authors_routes.router)
 app.include_router(comments_routes.router)
+app.include_router(subscriptions_routes.router)
+
 
 @app.get("/")
 async def root():
