@@ -609,7 +609,7 @@ async def update_episode(
         episode.cover_square_url = request['cover_square_url']
 
     if 'is_free' in request:
-    episode.is_free = request['is_free']
+        episode.is_free = request['is_free']
         
     db.commit()
     db.refresh(episode)
