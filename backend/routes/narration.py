@@ -698,7 +698,7 @@ async def get_episode(episode_id: str, db: Session = Depends(get_db)):
         "like_count": episode.like_count or 0,
         "comment_count": episode.comment_count or 0,
         "created_at": episode.created_at.isoformat(),
-        "is_published": episode.is_published
+        "is_published": episode.is_published,
         "is_free": episode.is_free or False
     }
     
