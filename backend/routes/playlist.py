@@ -129,13 +129,12 @@ async def get_playlist(
     db: Session = Depends(get_db)
 ):
     """Get a specific playlist"""
-    from models import Episode
     
     playlist = db.query(Playlist).filter(Playlist.id == playlist_id).first()
     if not playlist:
         raise HTTPException(status_code=404, detail="Playlist not found")
     
-    episode_count = db.query(Episode).filter(Episode.playlist_id == playlist.id).count()
+    episode_count = playlist.episode_count or 0  # ✅ CORRECT
     
     return PlaylistResponse(
         id=str(playlist.id),
@@ -157,7 +156,6 @@ async def update_playlist(
     db: Session = Depends(get_db)
 ):
     """Update a playlist"""
-    from models import Episode
     
     playlist = db.query(Playlist).filter(Playlist.id == playlist_id).first()
     if not playlist:
@@ -199,7 +197,6 @@ async def delete_playlist(
     db: Session = Depends(get_db)
 ):
     """Delete a playlist (only if it has no episodes)"""
-    from models import Episode
     
     playlist = db.query(Playlist).filter(Playlist.id == playlist_id).first()
     if not playlist:
