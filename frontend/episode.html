@@ -681,6 +681,30 @@
         </div>
     </div>
     
+    <!-- Paywall Modal -->
+    <div id="paywallModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="background: #212121; border: 1px solid #3d3d3d; border-radius: 20px; padding: 48px; max-width: 500px; text-align: center;">
+            <div style="font-size: 4rem; margin-bottom: 24px;">🔒</div>
+            <h2 style="font-size: 2rem; font-weight: 700; color: #fff; margin-bottom: 16px;">Subscribe to Continue</h2>
+            <p style="font-size: 1.1rem; color: #aaa; line-height: 1.6; margin-bottom: 32px;">
+                You've reached the 30-second preview limit. Subscribe to <span id="paywallAuthorName" style="color: #3ea6ff; font-weight: 600;"></span> for $2.50/month to unlock full episodes.
+            </p>
+            
+            <div style="background: rgba(62, 166, 255, 0.1); border: 1px solid #3ea6ff; border-radius: 12px; padding: 24px; margin-bottom: 32px;">
+                <div style="font-size: 1.5rem; font-weight: 700; color: #3ea6ff; margin-bottom: 8px;">$2.50/month</div>
+                <div style="font-size: 0.9rem; color: #aaa;">✅ Unlimited access to all episodes<br>✅ Early access to new content<br>✅ Cancel anytime</div>
+            </div>
+            
+            <button onclick="subscribeToContinue()" style="width: 100%; padding: 18px; background: #3ea6ff; border: none; border-radius: 12px; color: #fff; font-size: 1.2rem; font-weight: 600; cursor: pointer; margin-bottom: 16px; transition: all 0.2s;">
+                Subscribe Now
+            </button>
+            
+            <button onclick="closePaywall()" style="width: 100%; padding: 14px; background: transparent; border: 1px solid #3d3d3d; border-radius: 12px; color: #aaa; font-size: 1rem; cursor: pointer; transition: all 0.2s;">
+                Not Now
+            </button>
+        </div>
+    </div>
+    
     <audio id="audioPlayer" preload="metadata"></audio>
     
     <script>
@@ -722,6 +746,7 @@
         let isUserSubscribed = false;
         let episodeAuthorId = null;
         let paywallChecked = false;
+        let paywallTriggered = false;
         
         // Initialize
         loadEpisode();
@@ -827,6 +852,47 @@
                 console.error('Error checking subscription:', error);
                 isUserSubscribed = false;
             }
+        }
+        
+        function triggerPaywall() {
+            console.log('🛑 30 seconds reached - showing paywall');
+            
+            // Pause audio
+            if (currentAudio) {
+                currentAudio.pause();
+                updatePlayPauseButton();
+            }
+            
+            // Show paywall modal
+            const modal = document.getElementById('paywallModal');
+            modal.style.display = 'flex';
+            
+            // Set author name
+            if (episodeData) {
+                fetch(`${API_URL}/api/authors/by-id/${episodeAuthorId}`)
+                    .then(r => r.json())
+                    .then(author => {
+                        document.getElementById('paywallAuthorName').textContent = author.display_name;
+                    });
+            }
+        }
+        
+        function closePaywall() {
+            document.getElementById('paywallModal').style.display = 'none';
+        }
+        
+        function subscribeToContinue() {
+            if (!currentUserId) {
+                alert('Please log in to subscribe');
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            // For now, just alert (we'll add Stripe in next step)
+            alert('🚧 Stripe checkout coming in next step!\n\nFor now, this would redirect to payment.');
+            
+            // TODO: Redirect to Stripe Checkout
+            console.log('Would redirect to Stripe checkout for author:', episodeAuthorId);
         }
         
         function renderEpisodeHeader(episode, author) {
@@ -936,6 +1002,12 @@
             const progress = (currentAudio.currentTime / currentAudio.duration) * 100;
             document.getElementById('progressBar').value = progress || 0;
             document.getElementById('currentTime').textContent = formatTime(currentAudio.currentTime);
+            
+            // Check 30-second paywall
+            if (!paywallTriggered && !isEpisodeFree && !isUserSubscribed && currentAudio.currentTime >= 30) {
+                paywallTriggered = true;
+                triggerPaywall();
+            }
         }
         
         function updateTotalTime() {
