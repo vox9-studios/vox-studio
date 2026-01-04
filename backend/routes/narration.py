@@ -672,3 +672,28 @@ async def delete_episode(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete episode: {str(e)}")
         
+@router.get("/episode/{episode_id}")
+async def get_episode(episode_id: str, db: Session = Depends(get_db)):
+    """Get a single episode by ID"""
+    
+    episode = db.query(GenerationJob).filter(
+        GenerationJob.id == episode_id
+    ).first()
+    
+    if not episode:
+        raise HTTPException(status_code=404, detail="Episode not found")
+    
+    return {
+        "id": str(episode.id),
+        "author_id": str(episode.author_id),
+        "episode_title": episode.episode_title,
+        "episode_description": episode.episode_description,
+        "cover_square_url": episode.cover_square_url,
+        "audio_url": episode.audio_url,
+        "vtt_url": episode.vtt_url,
+        "like_count": episode.like_count or 0,
+        "comment_count": episode.comment_count or 0,
+        "created_at": episode.created_at.isoformat(),
+        "is_published": episode.is_published
+    }
+    
